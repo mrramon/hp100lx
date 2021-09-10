@@ -1,0 +1,11 @@
+To build the file longmath.lib required for date/time/number edit
+handlers, you'll need to extract objects out of your Microsoft
+C library mlibce.lib.
+
+The following objects need to be extracted and bundled into longmath.lib:
+  anldiv
+  anlmul
+  anlrem
+  anlshl
+  anlshr
+  anlmul

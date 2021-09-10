@@ -1,0 +1,571 @@
+!short:
+!short:^u Miscellaneous routines
+^u Miscellaneous routines
+
+    This set of functions is for special operations, such as control of the
+    volume, serial port, light-sleep and timeout of the palmtop, get scancode
+    and ASCII code from a pressed key, and much more.
+
+Available functions:
+
+  - AnnuncPos    : Set the annunciators position (Shift,CAPS,Fn indicators).
+  - Check5f      : Check for presence of INT 5Fh services.
+  - CheckSysMgr  : Check for presence of INT 7Eh (SysMgr) services.
+  - FatalExit    : Fatal error exit from PAL and return error code to DOS.
+  - PalInit      : Initialize PAL library (the first thing to do).
+  - PalDeInit    : Shut down PAL library (just before exiting program).
+  - WhichHp      : Returns the model number of the palmtop we're running upon.
+  - GetKey       : Get a key (with ASCII and Scan code).
+  - KeyWaiting   : Check if a key is waiting
+  - PushKeys     : Push a sequence of Keys which GetKey will deliver.
+  - Volume       : Set the volume level of the palmtop.
+  - SetSerialPort: Turn on/off the serial port COM1 of the palmtop.
+  - SetLightSleep: Enable/disable light-sleep (Power-management).
+  - SetTimeOut   : Set the timeout delay of the Auto-Power-Off feature.
+  - MsgBox       : Display a message box with title, text and buttons
+  - AskYesNo     : Ask user Yes or No
+  - MsDelay      : Wait a specific number of milliseconds
+
+!short: AnnuncPos            Set the annunciators position.
+   NAME
+      AnnuncPos
+
+   DESCRIPTION
+      This function places the annunciators (Shift,Caps,Fn indicators) on
+      the bottom left or right of the screen. It is useful to place the
+      annunciators to the left of the screen in your programs, so they don't
+      get over the F1 label on the screen (like in the PIMs).
+
+   SYNOPSIS
+      #include "pal.h"
+      void AnnuncPos(int position);
+
+   INPUTS
+      position - The position of the annunciators. You can use one of
+                 the following values:
+
+                 AN_LEFT : place annunciators to the bottom left,
+                 AN_RIGHT: place annunciators to the bottom right.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      The annunciators are usually to the right side of the screen while
+      in DOS, and to the left when in the System Manager PIMs.
+
+   SAMPLE
+      AnnuncPos(AN_LEFT);  /* place annunciators to the left side */
+
+!Seealso: GraphMode TextMode
+
+!short: Check5f              Check for presence of INT 5Fh services.
+   NAME
+      Check5f
+
+   DESCRIPTION
+      This function checks for the presence of INT 5Fh services
+      (Either running on palmtop or on PC with emulator). Returns
+      TRUE if services are present.
+
+   SYNOPSIS
+      #include "pal.h"
+      int  Check5f(void);
+
+   INPUTS
+      None
+
+   RETURN VALUE
+      TRUE if INT 5Fh services are present.
+
+   NOTE
+      You can use the CGAGRAPH.COM or CG.COM emulator to have access
+      of the INT 5Fh services on your desktop (286+ only).
+      The GraphMode() function includes the Check5f() test.
+
+   SAMPLE
+      if(!Check5f()) FatalExit("Init failed - CGAGRAPH not loaded ?", 1);
+
+!Seealso: PalInit FatalExit
+
+!short: CheckSysMgr          Check if SysMgr services are available.
+   NAME
+      CheckSysMgr
+
+   DESCRIPTION
+      This function checks if the System manager is loaded.
+
+   SYNOPSIS
+      #include "pal.h"
+      int CheckSysMgr(void);
+
+   INPUTS
+      None.
+
+   RETURN VALUE
+      Returns TRUE (1) if SysMgr is loaded, FALSE (0) otherwise.
+
+   NOTE
+      Checking for SysMgr presence is mandatory for PAL applications
+      that use functions from the SM_SVC module - these will not
+      work and even crash without the presence of SysMgr.
+
+   SAMPLE
+    if(!CheckSysMgr()) printf("SysMgr not loaded!\n");
+    else printf("SysMgr is loaded...\n");
+
+!short: FatalExit            Fatal error exit from PAL and return error code.
+   NAME
+      FatalExit
+
+   DESCRIPTION
+      This function is used to exit the program when a fatal error occurs.
+      You can specify the error message to be displayed and the error
+      code to be returned to DOS.
+
+   SYNOPSIS
+      #include "pal.h"
+      void FatalExit(char *Msg, int ExitCode);
+
+   INPUTS
+      Msg      - The error message you want to be displayed.
+      ExitCode - The error code (number) to be returned to DOS.
+
+   RETURN VALUE
+      Returns the error code to DOS and quits program.
+
+   NOTE
+      This function automatically resets the screen mode to text
+      upon exit.
+
+   SAMPLE
+
+   if(!(pFont = LoadFont("span0015.hfn"))) FatalExit("Load Font failed", 1);
+
+!Seealso: TextMode
+
+!short: PalInit              Initialize PAL library (first thing to do).
+   NAME
+      PalInit
+
+   DESCRIPTION
+      This function initializes the PAL library. It can optionally
+      switch to graphics mode and also sets the 'Palmtop'
+      variable to non-zero if running on HP palmtop. This is the
+      first function that is usually called in a program using
+      the PAL library.
+
+   SYNOPSIS
+      #include "pal.h"
+      int  PalInit(int Graphics);
+
+   INPUTS
+      Graphics - a flag: pass 1 if you want PalInit to switch to
+                 graphics mode. (Generally the case)
+
+   RETURN VALUE
+      Returns TRUE if successful.
+
+   NOTE
+      The opposite function of PalInit() is PalDeInit().
+
+   SAMPLE
+   if(!PalInit(1)) FatalExit("PalInit failed.", 1);
+
+!Seealso: FatalExit SetRule SetColor SelectFont PalDeInit
+
+!short: PalDeInit            Shut down PAL library.
+
+   NAME
+      PalDeInit
+
+   DESCRIPTION
+      This function shuts down the PAL library. It is normally
+      called just before exiting the program.
+
+   SYNOPSIS
+      #include "pal.h"
+      void PalDeInit(int Text);
+
+   INPUTS
+      Text  -  a flag: pass 1 if you want PalDeInit to switch
+               to text mode for you.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      This function is the opposite of PalInit().
+
+   SAMPLE
+      PalDeInit(1);  /* shut down PAL services, switch to text */
+
+!Seealso: PalInit TextMode
+
+!short: WhichHp              Returns the model number of the palmtop.
+
+   NAME
+      WhichHp
+
+   DESCRIPTION
+      This function returns the HP model number of the palmtop we're
+      running upon.
+
+   SYNOPSIS
+      #include "pal.h"
+      int  WhichHp(void);
+
+   INPUTS
+      None
+
+   RETURN VALUE
+        0 --> no palmtop, PC
+       95 --> HP95LX
+      100 --> HP100LX
+
+   SAMPLE
+      if(WhichHp() == 0) printf("This is not an HP palmtop!");
+
+!Seealso: Check5f
+
+!short: GetKey               Get a key (with ASCII and Scan code).
+
+   NAME
+      GetKey
+
+   DESCRIPTION
+      This function will wait for a keystroke and return it in both ASCII
+      and scancode. The upper byte of the result will hold the scancode,
+      the lower byte the ASCII code. This function can also detect the
+      palmtop-specific keys like MENU.
+
+   SYNOPSIS
+      #include "pal.h"
+      WORD GetKey(void);
+
+   INPUTS
+      None
+
+   RETURN VALUE
+      A 16-bit value (WORD) with the most significant byte for the scancode,
+      and the least significant byte for the ASCII code.
+
+   NOTE
+      This function can work in conjunction with the PushKeys() function
+      which allows to push a sequence of Keys which GetKey will deliver.
+
+   SAMPLE
+      int key;
+
+      /* Get scancode and ASCII code */
+      key = GetKey();  /* wait for a key press */
+
+!Seealso: PushKeys KeyWaiting
+
+!short: KeyWaiting           Returns TRUE if a key is waiting
+
+   NAME
+      KeyWaiting
+
+   DESCRIPTION
+      Return TRUE if a keystroke is waiting to be retrieved via
+      GetKey
+
+   SYNOPSIS
+      #include "pal.h"
+      int KeyWaiting(void);
+
+   INPUTS
+      None
+
+   RETURN VALUE
+      TRUE if a key is waiting, else FALSE.
+
+   NOTE
+      This function respects keys pushed with the PushKeys function.
+      Using kbhit() will not know about these.
+
+   SAMPLE
+      if(KeyWaiting()) break; /* leave loop if user presses a key */
+
+!Seealso: PushKeys GetKey
+
+!short: PushKeys             Push a sequence of Keys which GetKey will deliver.
+
+   NAME
+      PushKeys
+
+   DESCRIPTION
+      This function is used in conjunction with GetKey() and pushes a
+      sequence of keys that GetKey() can deliver.
+
+   SYNOPSIS
+      #include "pal.h"
+      void PushKeys(WORD *pKeys);
+
+   INPUTS
+      pKeys - pointer to a 0-terminated array of WORDs, with the most
+              significant byte as scancode and the least significant
+              one as ASCII code.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      This function is using a global int array called KStack[MAX_KEYSTACK]
+      which can hold up to MAX_KEYSTACK entries. It is used in recursive
+      calls to PushKeys - this way, pushed keystrokes that cause PushKeys
+      to be called again when being retrieved by GetKey don't cause a
+      problem. Note that the Menu module calls PushKeys itself.
+
+   SAMPLE
+      Not available at this moment.
+
+!Seealso: GetKey KeyWaiting
+
+!short: Volume               Set the volume level of the palmtop.
+
+   NAME
+      Volume
+
+   DESCRIPTION
+      This function sets the volume level of the palmtop.
+
+   SYNOPSIS
+      #include "pal.h"
+      void Volume(int Level);
+
+   INPUTS
+      Level - The volume level, which can be one of the 4 possible
+              settings:
+
+                VOL_OFF   : Set volume completely off.
+                VOL_LOW   : Set volume to the lowest level.
+                VOL_MEDIUM: Set volume to the middle level.
+                VOL_HI    : Set volume to the maximum level.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      The default setting is VOL_HI.
+
+   SAMPLE
+      Volume(VOL_HI);  /* set volume to maximum */
+
+!Seealso: m_play m_asound
+
+!short: SetSerialPort        Turn on/off the serial port of the palmtop.
+
+   NAME
+      SetSerialPort
+
+   DESCRIPTION
+      This function turns on or off the serial port COM1 (wire) of the
+      palmtop.
+
+   SYNOPSIS
+      #include "pal.h"
+      void SetSerialPort(int Mode);
+
+   INPUTS
+      Mode - Can be either SERIAL_ON, or SERIAL_OFF.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      When the serial port is ON, the palmtop drains the batteries faster.
+      Do not forget to turn it off when not in use. The baudrate settings
+      are not affected when calling this function. The Infared (I.R.) port
+      is not affected either.
+
+   SAMPLE
+      SetSerialPort(SERIAL_OFF); /* turn off serial port */
+
+!Seealso: SetLightSleep
+
+!short: SetLightSleep        Enable/disable light-sleep (Power-management).
+
+   NAME
+      SetLightSleep
+
+   DESCRIPTION
+      This function enables/disables the power-management feature called
+      'light-sleep'. This does accelerate the computer's speed somehow,
+      but decreases battery life. It is useful to turn it off while doing
+      a search for example, to speed-up the search process.
+
+   SYNOPSIS
+      #include "pal.h"
+      void SetLightSleep(int Mode);
+
+   INPUTS
+      Mode - Can be either SLEEP_ON, or SLEEP_OFF.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      When the light sleep feature is disabled, the battery life is reduced
+      dramatically. It is important to remember to turn this feature back ON
+      before exiting your program.
+
+   SAMPLE
+      SetLightSleep(SLEEP_ON); /* enable light-sleep */
+
+!Seealso: SetSerialPort SetTimeOut
+
+!short: SetTimeOut           Set the timeout delay of the Auto-Power-Off.
+
+   NAME
+      SetTimeOut
+
+   DESCRIPTION
+      This function will change the time-out delay of the Auto-Shut-Off
+      feature of the palmtop.
+
+   SYNOPSIS
+      #include "pal.h"
+      void SetTimeOut(WORD value);
+
+   INPUTS
+      value - A 16-bit value for the time-out delay. The value is actually
+              the number of clock ticks (18.2 per second), so a time-out
+              delay of ten seconds should be 182.
+
+   RETURN VALUE
+      None
+
+   NOTE
+      WARNING!!! If the time-out value is too small the palmtop will turn
+      off as soon as you turn it on, and only a CTL-ALT-DEL (warm boot)
+      will bring it back to normal!
+
+   SAMPLE
+      SetTimeOut(2184); /* set timeout to 2 minutes */
+
+!Seealso: SetLightSleep
+
+!short: MsgBox               Display a message box with buttons
+   NAME
+      MsgBox
+
+   DESCRIPTION
+      MsgBox will display a message window with a title and text that
+      you specify, and lets the user select one of up to five buttons
+      that you also define. It will return the index of the button that
+      the user selected. Optionally, a pointer to an input buffer may
+      be passed - the message box will then also have an input field
+      where the user can type text. The buffer will contain that text
+      when MsgBox returns.
+
+   SYNOPSIS
+      #include "pal.h"
+      int MsgBox(char *Title, char *Msg, char *Inp, char *Buttons, ...);
+
+   INPUTS
+      Title   - a short title string, will be displayed at the top of
+                the window. If you don't want a title, use NULL here.
+
+      Msg     - the message that will be displayed inside the message
+                window. If you want line breaks, use the '|' character
+                to insert them. (See example below). There may be ten
+                lines of text at most. You may use printf format
+                specifiers in the message. The corresponding parameters
+                must be specified _following_ the Buttons argument.
+
+      Inp     - if this pointer is not NULL, it should point to an
+                input buffer of at least 80 characters. The message
+                box will contain an input field in this case, and the
+                input that the user types will end up in that buffer.
+                If you pass NULL for this parameter, there will not
+                be an input field.
+
+                Note: If Inp is not NULL, the two last lines of the
+                Msg string (that is, the two last segments delimited
+                by '|') have special meaning. The first one is the
+                prompt that will appear before the input field,
+                the second one is the initial contents of that field.
+
+      Buttons - the legends to be displayed on the buttons. Separate
+                them with a '|' character. (see example below)
+                If you don't want buttons, use NULL here. You may
+                have a maximum of five buttons. Start the legend of
+                a button with '!' if you want it to be the one that
+                initially has the focus.
+
+      ...     - a variable number of parameters - corresponding to
+                the printf format specifiers in the Msg string.
+                The resulting message may not exceed 1K in length !
+
+   RETURN VALUE
+      The index of the selected button (starting at zero for the first
+      one), or the predefined constants DN_OK and DN_CANCEL, if the user
+      hit F10 or ESC, respectively.
+
+   NOTE
+      You may want to pad button labels with blanks for better optics.
+      That is, instead of "OK|Cancel" use "  OK  |Cancel" to give both
+      buttons the same width.
+
+   SAMPLE
+      int r;
+
+      r = MsgBox("Attention", " | Sure delete %s ? | ",
+                 NULL, "  OK  |!Cancel", FileName);
+      if(r == 0 || r == DN_OK) DeleteFile(FileName);
+
+!Seealso: AskYesNo
+
+
+!short: AskYesNo             Ask the user Yes or No
+   NAME
+      AskYesNo
+
+   DESCRIPTION
+      AskYesNo will display a message window with a question that you
+      specify, and lets the user select either the YES or the NO
+      button. It will return TRUE for YES and FALSE for NO
+
+   SYNOPSIS
+      #include "pal.h"
+      int AskYesNo(char *Question);
+
+   INPUTS
+      Question - the question that you want to ask the user.
+
+   RETURN VALUE
+      TRUE if the user selected the YES button or hit F10, FALSE if
+      he selected the NO button.
+
+   SAMPLE
+      if(AskYesNo("Will you marry me ?")) Celebrate();
+
+!Seealso: MsgBox
+
+!short: MsDelay              Wait a specified number of milliseconds
+   NAME
+      MsDelay
+
+   DESCRIPTION
+      MsDelay will wait for a specified number of milliseconds.
+
+   SYNOPSIS
+      #include "pal.h"
+      void MsDelay(unsigned int MilliSecs)
+
+   INPUTS
+      MilliSecs - the number of milliseconds to wait.
+
+   NOTE
+      Although the waiting period is specified in milliseconds, the
+      actual resolution is of an 18th of a second only. Also note that
+      since the parameter is an unsigned int, about 65 seconds is
+      the longest period that you can wait for.
+      Finally, this function will not work if the 18 Hz interrupt
+      is disabled.
+
+   SAMPLE
+      MsDelay(2000); /* wait 2 seconds */
+

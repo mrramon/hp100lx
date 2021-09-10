@@ -1,0 +1,7 @@
+Release 1.1 of the Palmtop Application Library. New functions
+and utilities (Font editor, HTML doc support), new UI functions,
+bug fixes, enhanced docs.
+
+Extract with PKUNZIP -d PAL (in directory of its own).
+
+Uploaded by your coordinating PAL, Gilles Kohl.

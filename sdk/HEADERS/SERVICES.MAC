@@ -1,0 +1,123 @@
+;
+; $Header:   T:/hh/include/vcs/services.mav   1.5   19 Oct 1992 11:17:16   HOMI  $
+;
+; $Log:   T:/hh/include/vcs/services.mav  $
+;  
+;     Rev 1.5   19 Oct 1992 11:17:16   HOMI
+;  Modified the SERVICES macro to as it is in Interfac.mac.
+;  
+;     Rev 1.4   15 Oct 1992 10:53:32   KIM
+;  * * * SERVER DISK CRASH RECOVERY * * *
+;   1) The VCS directory was restored with Build 18 backup tape.
+;   2) This revision is to update files to Build 19.
+;   3) HELP.H has post-Build 19 changes.
+;  
+;     Rev 1.3   12 Aug 1992 16:24:10   HOMI
+;  Added SC_MAXNUM_JAR for jaguar dispatching check
+;  
+;     Rev 1.2   29 Jul 1992 13:06:02   HOMI
+;  Added int 7Fh and API management equates
+;  
+;     Rev 1.1   08 Jul 1992 11:28:20   HOMI
+;  New API changes.
+;  
+;     Rev 1.0   03 Dec 1991 16:21:44   DAVID
+;  Initial revision.
+;  
+
+ifdef   API2
+        CLASS_BASE              EQU     40h
+        SERVICESVECTOR          equ     7Eh
+        FIRST_ARG_LEN           equ     12 + 6 + 2
+
+        SERVICES macro serclass,subfunc                 ; homi        
+                IF ((SC_&serclass GE 50h) AND (SC_&serclass LE 53h)) OR (SC_&serclass EQ 56h)         
+                        mov  di,(SC_&serclass SHL 8) OR Fun&serclass&subfunc
+                        xchg ax, di
+                ELSE
+                        mov  ax,(SC_&serclass SHL 8) OR Fun&serclass&subfunc
+                ENDIF
+                System_Service_Call
+        endm
+
+        SC_APIMGT      EQU      (CLASS_BASE + 0)
+else
+        CLASS_BASE              EQU     0
+        SERVICESVECTOR          equ     60h
+        FIRST_ARG_LEN           equ     12
+
+        SERVICES macro serclass,subfunc
+                mov di,(SC_&serclass SHL 8) OR Fun&serclass&subfunc
+                System_Service_Call
+        endm
+
+        SC_FP           equ     (CLASS_BASE + 0)
+endif
+
+                                        ; homi CLASS_BASE  added       
+SC_EVENT        equ     (CLASS_BASE + 1)
+SC_MENU         equ     (CLASS_BASE + 2)
+SC_SCREEN       equ     (CLASS_BASE + 3)
+SC_EDIT         equ     (CLASS_BASE + 4)
+SC_FILE         equ     (CLASS_BASE + 5)
+SC_PM           equ     (CLASS_BASE + 6)
+SC_CB           equ     (CLASS_BASE + 7)
+SC_SOUND        equ     (CLASS_BASE + 8)
+SC_MM           equ     (CLASS_BASE + 9)
+SC_BG           equ     (CLASS_BASE + 10)
+SC_DTIME        equ     (CLASS_BASE + 11)
+SC_PRINT        equ     (CLASS_BASE + 12)
+SC_CONFIG       equ     (CLASS_BASE + 13)
+SC_COMM         equ     (CLASS_BASE + 14)
+SC_MISC         equ     (CLASS_BASE + 15)
+SC_VIDVIR       equ     (CLASS_BASE + 16)
+SC_VIDPHY       equ     (CLASS_BASE + 17)
+SC_GRDISP       equ     (CLASS_BASE + 18)
+SC_KEY          equ     (CLASS_BASE + 19)
+SC_RSRC	        equ	(CLASS_BASE + 20)
+SC_HELP         equ     (CLASS_BASE + 21)
+SC_COL	        equ     (CLASS_BASE + 22)
+
+SC_MAXNUM_JAG   equ     22
+SC_MAXNUM       equ     (CLASS_BASE + 22)
+
+	 ifdef	 MOTOWN
+	 ifndef	 _sysmgr_call
+	extrn	_sysmgr_call:near
+	extrn	_set_system_data:near
+	 endif	 ; _sysmgr_call
+	 endif	 ; MOTOWN
+
+System_Service_Call	MACRO
+
+	 ifndef	 MOTOWN
+	int	SERVICESVECTOR
+	 else
+	call	_sysmgr_call
+	 endif	 ; MOTOWN
+ENDM
+
+
+DataSegVector   equ   61h
+DataSegVector_2 equ   7Fh
+
+    ifndef MOTOWN
+
+DGROUP_TO_DS MACRO
+;	int	DataSegVector
+	int	DataSegVector_2
+ENDM
+
+    else
+
+DGROUP_TO_DS MACRO
+	call	_set_system_data
+ENDM
+
+    endif
+
+
+
+
+
+

@@ -1,0 +1,23 @@
+
+The .ICN files need to have the SAME name & path as the .EXE file for which
+they are to serve as an icon.  (This is unfortunate for the programs on the
+ROM disk, as it's not possible to add custom icons for them because of
+this.)
+
+The format of the .ICN file is a simple G_PutImage structure as I've
+explained to you before, with a width of 44 and a height of 32 (decimal).
+The .ICN files generated here by the AppManager guru also have some junk on
+the end of the file, but it's unused by the AppManager itself.  It's for use
+with the ICON EDITOR that he wrote which is, in his own words, "a piece of
+shit" which requires TKERNEL and CGAGRAPH to run.  There's a good chance
+that he'll rewrite it someday, but he's not to keen on distributing it as
+is.  It should be simple enough for an adequate programmer, however, to
+throw an ICON editor together (knowing the above information) using the HP
+100LX or a PC and a copy of CGAGRAPH, so that the low-level graphics could
+be used to do the G_GetImage.
+
+The AppManager checks to make sure that the first 8 bytes of the file are
+PRECISELY:  0x01 0x00 0x01 0x00 0x2c 0x00 0x20 0x00
+That's the only check made to verify the file contents (other than the file
+name and path, of course).
+

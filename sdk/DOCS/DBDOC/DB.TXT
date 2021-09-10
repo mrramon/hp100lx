@@ -1,0 +1,1244 @@
+                 Database Documentation
+                     April 24, 1993
+            Functions in the Database Engine               
+
+Note: Unless otherwise stated, all database functions return
+a database error number.  All errors are guaranteed to be
+negative, so testing for negative numbers will test for all
+error conditions.  Selected functions return a record
+number as well (which will be 0 or positive), so testing for
+non-negative numbers will cover non-error situations.
+
+------------------
+int DB_Init(void);
+      This function is called at the beginning of the
+application to register the application with the database
+engine.  It is only called once per run for each
+application.  Before calling DB_Init, the application should
+register a far pointer table with the System Manager. 
+Failing to do this will prevent the database from
+functioning.  You should reserve ten far pointer entries for
+each database file you plan on having open concurrently. 
+Two of these handles must be "user" handles.  See the code
+sample for an example of registering the far pointer table.
+
+      Returns:
+            DB_OK       Database was initialized.
+      NOTE: No error is returned if the far pointer table is
+not initialized when this function is called!
+
+      May Move Memory: No
+
+-----------------------------------------------------------       
+    
+int DB_Create(DBBLOCK *dblk, char *filename, char filetype,
+int (far *FieldCallBack)(),int ROMCount, int (far
+*ROMCallBack)());
+      This function creates an empty database file.  The
+DBBLOCK is a pointer to a structure that the database
+maintains.  This block allows the engine to keep track of
+the opened database.  The DBBLOCK structure can be examined,
+but should not be modified.  
+
+If a file exists with the path pointed to by filename, that
+file is removed.  If the database creation fails either
+because of lack of disk space or lack of memory, the partial
+database file is removed.
+
+The filetype is a unique character supplied by the
+application that indicates the type of file (i.e.
+Appointment book, Phone Book, etc.).  This field is not used
+by the database, but can be used by the applications to
+determine if the database file is of the proper type. 
+Creating a database with filetype=0 allows that file to be
+read into any database application; DB_Opening an existing
+database file and passing filetype=0 allows the app to open
+any database file type.  The filetypes of the built-in
+applications are:
+      'D' - Phonebook/General Database file (same format). 
+All data in records accessible through fielddefs.
+      'N' - Notetaker file.  All data accessible through
+fielddefs.
+      '2' - Appointment book file.  Not all data accessible
+through fielddefs.  Also embedded links to other records.
+      'W' - World Time file.  All data in records
+accessible, however most data records will be ROM resident.
+Requires ROMCallBack and ROMCount to be correctly set to
+open properly. 
+
+The FieldCallBack is a pointer to a function that is used to
+sort and filter unknown database formats.  It can be NULL if
+the application does not have any call back fields.  See
+Miscellaneous:FieldCallBack for more details.
+
+The ROMCount and ROMCallBack fields are 0, unless the
+application requires ROM record support.  See
+Miscellaneous:ROMCallBack for more details.
+
+The date and time of the file's creation are recorded in the
+lastreconciled field in the header block.  They will
+indicate the original creation date of the file (unlike
+DOS's file timestamp).  However, reconciliation software
+should reset this time and date after reconciling the
+contents with another copy of the database.
+
+      Returns:
+            DB_OK       Database was created.
+            DB_CREATE   File cannot be created (not enough
+handles, bad filename, etc.)
+            DB_MEMORY   Not enough memory to open the
+created
+file
+            DB_WRITE    Not enough disk space; bad media
+            DB_PROTECTED      File on protected media
+            DB_OPEN     Created file cannot be opened.
+            DB_READ     Cannot read from new file
+            DB_SEEK     Cannot seek within file--media may
+bad.
+      
+      May Move Memory: Yes
+
+---------------------------------------------------------
+int DB_Open(DBBLOCK *dblk, char *filename, char filetype,
+int (far *FieldCallBack)(), char *password, int ROMCount,
+int (far *ROMCallBack)());
+      Opens an existing database file.  Opening a file
+initiates the following actions:
+1. If the file is marked read only, the DOS read only bit is
+cleared.
+2. The lookup table and last used viewpoint are read off the
+disk.  If they do not exist (most probably because the
+machine was rebooted while a database was open), they are
+created.
+3. The field definitions (if any) are loaded.
+4. The Undo point is set (see DB_Undo below)
+5. If the system sort order may have changed, all viewpoint
+tables are invalidated. This will cause the first swap to
+each new viewpoint to be recomputed.  They will be read in
+off of disk afterwards.  The new sort hash is stored in the
+file.  See Miscellaneous:Sorting for more details
+6. If the file is an OmniBook file (a.k.a. Lion), then in
+addition to Step 5, the file is translated.  The translation
+affects Upper ASCII characters (128..255) in most records,
+and they are mapped from the Windows ANSI CodePage to
+CodePage 850.  This process may take a while.  In
+addition to converting to CodePage 850, all viewpoint defs
+are flagged as "General" since the Lion and Cougar FISL Card
+parsing routines are incompatible.  The database engine sets
+the flag DB_WASTRANSLATED to indicate a translation has
+taken place if the application needs to translate its own
+record types.
+7. Opening passworded files will take two DB_Opens: opening
+the first time (and passing NULL as the password) will
+return with a DB_PASSWORDFAILED.  If this error is returned,
+the user should be prompted for a password, and the
+DB_Open() re-attempted, passing the new password. 
+DB_PASSWORDFAILED will be returned until the correct
+password is used.
+   
+   A DB_MAYBEINUSE error will be returned if the database
+file has been opened by another application and not yet
+closed.  This error is to prevent multiple applications from
+accessing the same database file at the same time.  This
+error can also occur if the database was open when the
+machine was rebooted.  The user should be prompted for
+action (either continue or abort). To continue, the
+DB_Reset() function needs to be called, and the DB_Open()
+reissued.
+   
+   See comments in DB_Create above for the FieldCallBack and
+ROMCallBack functions.
+   
+      Returns:
+            DB_OK       Database was opened.
+            DB_OPEN     File cannot be opened (does not
+exist, bad name, no DOS handles, etc.).
+            DB_MEMORY   Not enough memory to open the file
+            DB_WRITE    Bad media;not enough disk space.
+            DB_PROTECTED      File on protected media
+            DB_READ     Cannot read from file
+            DB_SEEK     Cannot seek within file--file may
+be corrupt.
+            DB_SIGNATURE      File is not a database file.
+            DB_FILETYPE       Type of file is different than
+expected.
+            DB_MAYBEINUSE     See above description of this
+error.  A call to DB_Reset is required to open the file.
+            DB_PASSWORDFAILED       The password is invalid.
+            DB_RELEASE        Database engine in the machine
+cannot open a file created by a later release database.  The
+release only changes if the file format differs.  The
+current release is 1.02 (0x0102).
+      
+      May Move Memory: Yes
+
+-----------------------------
+int DB_Reset(char *filename);
+      This is called if the DB_Open() returns a
+DB_MAYBEINUSE error.  The user should be prompted to
+continue, as using an already open database is a recipe
+for trouble.  It resets the internal lock on the file
+so the next DB_Open will not fail.  It should only be
+called for database files that have not been opened.
+See DB_Open for more information. 
+   
+      Returns:
+            DB_OK       Database was reset.
+            DB_OPEN      File cannot be opened.
+            DB_SIGNATURE      File is not a database file.
+      
+      May Move Memory: No
+   
+------------------------------------------------------
+int DB_ChangePassword(DBBLOCK *dblk, char *oldpassword,
+char *newpassword);
+      Changes the current password on the file.  Either a
+NULL pointer or a null string ("") can be passed to indicate
+no password; both are equivalent.  Changing the password
+does garbage collection, so an DB_Undo cannot be done
+immediately afterwards.  Changing the password requires
+rewriting all records in the database, and may take a while.
+   
+      Returns:
+            DB_OK       Password was changed OR the new
+password is not different from the old password.
+            DB_PASSWORDFAILED       The old password is
+invalid.
+            DB_SEEK     File is probably corrupt.
+            DB_READ     Media error.
+            DB_WRITE    Media error.
+            
+      May Move Memory: No
+
+---------------------------------   
+int DB_Deactivate(DBBLOCK *dblk);
+      This is used before leaving an application on a
+E_DEACTIV event to make sure the database file handle is
+closed.  Failing to do this may cause DOS to run out of file
+handles.  Only the DOS file handle is closed; this does not
+do garbage collection or any other actions associated
+with DB_Close.  Note that if multiple database files are
+open, each should be DB_Deactivated.  
+      Deactivation of a file causes the file to be marked
+read only.  This prevents the user from accidentally
+removing or modifying the file while it is still open by
+another application.
+   
+      Returns:
+            DB_OK       File was deactivated OR file was
+already deactivated.
+            DB_OPEN     File was not able to be write
+protected.
+            
+      May Move Memory: No
+
+---------------------------------   
+int DB_Reactivate(DBBLOCK *dblk);
+      Used upon returning from a E_ACTIV event to reopen the
+application's database(s).  If the database file has been
+closed with DB_Deactivate, no calls should be issued to the
+engine with that database until it has been DB_Reactivated. 
+The DOS file handle is reopened, and the write protection
+is removed from the file.
+   
+      Returns:
+            DB_OK       File was reactivated OR file was
+already reactivated.
+            DB_OPEN     File cannot be reopened (does not
+exist, bad name, no DOS handles, etc.).
+            DB_SIGNATURE      File is no longer a database
+file.
+            DB_FILETYPE       Type of file is different than
+expected.
+            DB_RELEASE        Database engine release is now
+different.  See DB_Open for more details.
+            DB_SORTCHANGE     The system sort order has
+changed, invalidating all viewpoints in memory.  The database
+must be reopened to correct this condition.
+   
+      NOTE: In all cases, if the reactivate fails, the
+database has been shut down.  Either the same database can
+be attempted to be reopened, or the user must specify
+another file.
+            
+      May Move Memory: Yes
+
+----------------------------------   
+int DB_CardChanged(DBBLOCK *dblk);
+      Used to detect a card change event and restore the
+database handle accordingly, or if the card has changed,
+shut down the database.  This function must be used to
+properly access databases that are resident on a card, since
+turning the unit on and off also generates DOS media changed
+events.  See the example event loop for how this should be
+used.
+   
+      Returns:
+            DB_OK       No card change OR card change
+detected and corrected OR database not open.
+   
+      See DB_Reactivate for list of additional errors.
+            
+      May Move Memory: Yes
+
+----------------------------
+int DB_Close(DBBLOCK *dblk);
+      Closes a database file.  Closing a file initiates the
+following actions:
+1. The current viewpoint table is written to disk.
+2. Garbage is collected on the file (as a result, no more
+Undos are available).
+3. The lookup table is written to disk.
+      Returns:
+            DB_OK       File was closed.
+            DB_CLOSE    File could not be closed.
+      Also returns errors from a DB_Write.
+            
+      May Move Memory: Yes
+
+-----------------------------------------------------------
+int DB_ReadRecord(DBBLOCK *dblk, char recordtype, RECORDNUM
+recordnum, void far *dest, unsigned int bufsize,unsigned int
+*sizeread);
+      Reads a record from the disk (or ROM, if ROM support
+is
+being used).  The record read is of type recordtype. 
+Recordnum is used to index the recordnum-th record of that
+type.  The record is read into dest (up to a maximum size of
+bufsize).  The actual number of bytes read is returned in
+sizeread, and is equal to the record size unless the record
+has been truncated (in which case, sizeread will equal
+bufsize--comparing the returned size with the size returned
+by DB_RecordSize is the only way to detect truncation).
+
+      Returns:
+            DB_OK       File was closed.
+            DB_NOTFOUND       Recordnum is not in the
+database.
+            DB_READ     Cannot read the disk.
+            DB_SEEK     File is probably corrupt.
+            DB_DELETED        Record is deleted.
+            
+      May Move Memory: No
+
+int DB_WriteRecord(DBBLOCK *dblk, char recordtype, RECORDNUM
+recordnum, void far *src,unsigned int recsize, int
+*viewptindex);
+      Writes a record to the disk.  The record is written as
+the recordnum-th record of recordtype.  If the record number
+written to is above the maximum number of records of that
+type, the record is written to the next available spot, not
+to that absolute record number.  The number returned is the
+actual record written to.  As an example, writing data
+record 10 to a database that contains only 3 data records
+will write the information to record number 3 (0-2 is three
+records, 3 is the next record), and the function will
+return 3. 
+
+If viewptindex is a NULL pointer, no viewpt information is
+returned. Otherwise, the integer pointed to by viewptindex
+is set to the viewptindex of that record.  The viewpoint
+index of the record is the index into the viewpt table where
+the record was inserted.  The insertion point is affected by
+the current filter and sort.  If the record does not belong
+in the current viewpoint, the viewpt index returned is
+DB_VPABSENT.
+
+The record is marked as modified for reconciliation, and the
+selection state is cleared.
+
+      Returns:
+            0..32767    Record was written.
+            DB_WRITE    Disk is full; media is bad.
+            DB_READ     Cannot read the disk.
+            DB_SEEK     File is probably corrupt.
+            DB_LARGEVIEWPT    The lookup table or viewpoint
+table has reached the internal database limit.
+            DB_MEMORY   Not enough memory to expand the
+lookup table or viewpoint table.
+            DB_DELETED        Record is deleted.  You cannot
+write to a deleted record if an undo would reinstate that
+record.
+            
+      May Move Memory: Yes
+
+---------------------------------------------------
+int DB_DeleteRecord(DBBLOCK *dblk, char recordtype,
+RECORDNUM recordnum, int *viewptindex);
+      Deletes a record.  If viewptindex != NULL, the
+viewptindex returns the index at which the record was
+removed.  
+      Returns:
+            DB_OK       Record was deleted.
+            DB_NOTFOUND       Recordnum is not in the
+database.
+            DB_READ     Cannot read the disk.
+            DB_SEEK     File is probably corrupt.
+            DB_DELETED        Record is deleted.
+            
+      May Move Memory: Yes
+
+-----------------------------------------------------------
+int DB_RecordSize(DBBLOCK *dblk, char recordtype, RECORDNUM
+recordnum);
+      Returns the size of the indicated record.  The record
+size is maintained in memory, so this call is more efficient
+than reading the disk.
+      Returns:
+            0..32767    Size of the record.
+            DB_NOTFOUND       Recordnum is not in the
+database.
+            DB_DELETED        Record is deleted.
+            
+      May Move Memory: No
+
+---------------------------------------------------------
+int DB_AddRecord(DBBLOCK *dblk, char recordtype, void far
+*src, unsigned int recsize, int *viewptindex);
+      This appends a record to the next available record. 
+The int returned is the number of the record written to. 
+Note that since DB_WriteRecord appends if the record is past
+existing records, this function is implemented through a
+call to DB_WriteRecord.  The record is marked as modified
+for reconciliation.  See DB_WriteRecord for possible errors.
+
+----------------------------------------------------
+int DB_CountRecords(DBBLOCK *dblk, char recordtype);
+      Returns the number of reserved record locations for a
+recordtype.  This differs from the actual number of records
+in this way: deleted records retain their record numbers,
+effectively creating holes in the record table, and this
+function includes holes in its count.  The number returned
+is the number of the next record that would be written to
+during a DB_AddRecord (if no deleted record numbers have
+been reclaimed--use DB_NextRecord for the true record
+number).  This cannot error.
+
+----------------------------------------
+int DB_CreateLookupTable(DBBLOCK *dblk);
+      Creates/recreates the lookup table for all records
+in a database.  This function would not normally be called by
+application routines, but is called by the database engine
+during DB_Open if the machine had been rebooted before the
+lookup table was written to disk.
+
+      May Move Memory: Yes
+
+----------------------------------------
+int DB_CreateViewPtTable(DBBLOCK *dblk);
+      Recreates the current viewpoint table.  Again, this
+function is automatically called by the database if the
+viewpoint table is absent.
+
+      May Move Memory: Yes
+
+-------------------------------------
+int DB_CollectGarbage(DBBLOCK *dblk);
+      Removes unused records in the database.  Collecting
+garbage resets the Undo Point (see Undo below).  This
+happens automatically when the database file is closed.
+Garbage collection may need to be called at strategic
+points to prevent disk files from growing too large.
+After garbage collection, any deleted record numbers will
+be reclaimed.  The DOS file buffer is flushed after
+garbage collection.
+      Returns:
+            DB_OK       Garbage collection was successful.
+            DB_CORRUPT        A media error during garbage
+collection may have rendered the file unusable.  
+            
+      May Move Memory: No
+
+-----------------------------------
+int DB_SetUndoPoint(DBBLOCK *dblk);
+      This takes a "snapshot" of the database when it is
+called.  An Undo will restore the database to its state at
+the time the Undo Point was set.  Note that all records (not
+just data records) are restored.  The SetUndoPoint also
+collects garbage, and in fact, the two functions are
+identical.  
+      See DB_CollectGarbage for errors.
+
+--------------------------------
+int DB_FlushFile(DBBLOCK *dblk);
+      This closes and reopens the DOS file to make sure the
+file is completely updated on disk.  If the database file
+has not been flushed, a reboot may lose data.  To have the
+database be able to survive user rebooting, this should be
+periodically called in the event loop.
+
+      Returns:
+            DB_OK       Flush was successful OR no flush was
+required (no modifications have been made since last flush).
+            DB_CLOSE    The DOS file handle could not be
+closed.
+            
+      May Move Memory: No
+
+---------------------------------------------------------
+int DB_Undo(DBBLOCK *dblk, int *undocount, UNDORETURN far
+***undoret);
+      Removes all changes made to the database since the
+last Undo Point was set.  Undo sets an Undo Point before it
+begins executing so that Undoing an Undo will return you to
+where you started.  DB_CANTUNDO is returned if no actions
+have been performed on the database since the last Undo
+Point.
+If the undocount pointer is not NULL, the integer at
+undocount is filled with the number of records affected by
+the Undo.
+
+If the undoret pointer is not NULL, the pointer at undoret
+is filled with the address of the System Manager memory
+"handle" that points (doubly indirect) to an memory block. 
+This new memory block is allocated by the database, but the
+application is responsible for deleting the block when it is
+done examining the entries.  The UNDORET array that lies in
+this block gives the record numbers, types, and actions of
+any records that have changed.  The action code indicates
+what was done to restore the record, not what happened to
+the original record (i.e. if after an Undo, a record that
+was previously deleted is re-added, the action code will be
+UNDO_ADDED).  If the undoret pointer is not NULL, and there
+is not enough memory to allocate the undoret array, DB_Undo
+returns with a DB_MEMORY error.
+
+DB_Undo also flushes the DOS file after completing.
+
+      Returns:
+            DB_OK       Undo successful.
+            DB_CANTUNDO       No changes have been made
+since the
+last undo point was set.
+            DB_MEMORY   A undo table was requested, but
+there
+was not enough memory.
+            DB_READ     The file is bad.
+            
+      May Move Memory: Yes
+
+---------------------------------
+int DB_UndoStatus(DBBLOCK *dblk);
+      Returns the status of an Undo (so menu items can be
+grayed appropriately, etc.).  The function returns bit
+DB_US_UNDO set if an undo is possible.
+      This function cannot error.
+
+-----------------------------------------------------
+int DB_Select(DBBLOCK *dblk, RECORDNUM recordnum, int
+status);
+      Sets the state of a TYPE_DATA record to be selected
+(status=1), unselected (status=0), or toggled (status=2). 
+This is used to track multiple selections made by the user. 
+Once made, selections must be cleared by the application. 
+Note that the select state is not retained by the database
+after closing the file, nor is it retained if the record is
+modified.  Undo does not affect selection status.
+
+      Returns:
+            DB_OK       Select successful.
+            DB_NOTFOUND       Recordnum is not in the
+database.
+            DB_DELETED        Record is deleted.
+            
+      May Move Memory: No
+
+------------------------------------------------------
+int DB_IsSelected(DBBLOCK *dblk, RECORDNUM recordnum);
+      Returns the select status of a TYPE_DATA record.  
+
+      Returns:
+            0     Record is not selected.
+            1     Record is selected.
+            DB_NOTFOUND       Recordnum is not in the
+database.
+            DB_DELETED        Record is deleted.
+            
+      May Move Memory: No
+
+------------------------------------
+int DB_LoadFieldDefs(DBBLOCK *dblk);
+      Loads the field definition blocks from the database. 
+This happens automatically when the database is opened.  The
+field defs are used by viewpoints and the FISL interpreter
+to determine the fields that can be sorted and filtered
+against.  The field definitions define the field name, type,
+and location in the record.  (The phonebook/general database
+also use field defs to maintain the fields input by the
+user.)  Although this function is not typically needed, if
+the application writes to TYPE_FIELDDEF records, this
+function must be called to update the fielddefs in memory.
+
+      Returns:
+            DB_OK       Fielddefs were read.
+            DB_MEMORY   Not enough memory to load in the new
+fielddefs.
+            
+      May Move Memory: Yes
+
+----------------------------------------------------------
+int DB_GetField(DBBLOCK *dblk, void far *srcrec,int index,
+char far *string, int bufsize);
+      Gets a field from a preloaded data record.  srcrec
+points to the buffer in memory that the record has been
+loaded into, index is the index of the field you want to
+retrieve, and string and bufsize indicate the buffer and
+size of the area that will contain the field's contents (in
+string form) after the call.
+
+      Returns:
+            DB_OK       Field was returned
+            DB_NOFIELD        The requested field is deleted
+or does not exist.
+            
+      May Move Memory: No
+----------------------------------------------------------
+int DB_GetNamedField(DBBLOCK *dblk, void far *srcrec, char
+far *name,char far *string, int bufsize);
+      Like the call above, this gets a field from a
+preloaded
+data record.  The only difference is that a name is supplied
+instead of an index.   Error returns are the same.
+
+      Returns:
+            DB_OK       Field was returned
+            DB_NOFIELD        The requested field is deleted
+or does not exist.
+            
+      May Move Memory: No
+
+----------------------------------------------------------
+int DB_GetFieldStrings(DBBLOCK *dblk, void far *srcrec,int
+indextable[], char far *ptrtable[], int indexcount, char far
+*buffer, int bufsize);
+      This converts a group of fields (instead of just one)
+from the data record into strings.  srcrec points to the
+preloaded record, index table is an array of integers
+representing field indices, ptrtable is a table of pointers
+that is loaded with the addresses of the strings, and
+indexcount is the number of fields requested.
+
+Buffer and bufsize are used for "temporary" string creation.
+
+If the fields asked for are already in string format, the
+pointers in ptrtable are just set to point into the srcrec. 
+If the fields are in a non-string format, then they are
+created in buffer, and ptrtable points to them there.  
+
+No errors are returned, and memory is not moved.
+
+-----------------------------------------------------
+int DB_GetFieldName(DBBLOCK *dblk, int index,char far
+*name);
+      Copies the name of the indexed field into the buffer
+given.
+
+      Returns:
+            DB_OK       Field was returned
+            DB_NOFIELD        The requested field is deleted
+or does not exist.
+            
+      May Move Memory: No
+
+----------------------------------------------------
+int DB_GetFieldIndex(DBBLOCK *dblk, char far *name);
+      Looks up name in the database.  An index is returned
+(> 0) if the name is found, otherwise the error code
+DB_NOFIELD.
+
+      Returns:
+            0..255      Field index was returned
+            DB_NOFIELD        The requested field is not
+found.
+            
+      May Move Memory: No
+
+------------------------------------------------------
+int DB_Order(DBBLOCK *dblk, RECORDNUM recnum1,char far
+*rec1, RECORDNUM recnum2, char far *rec2);
+      Acts like the C string compare functions: returns -1
+if rec1<rec2, returns 1 if rec1>rec2, and returns 0 if
+rec1=rec2.  Note that both records must be loaded and in
+memory to use this function.  The comparisons are made by
+examining the current sort definition which gives the order
+of the sort keys.  Comparisons are based on the field types.
+
+      Returns:
+            -1    rec1 is less than rec2
+             0    rec1 is equal to rec2
+             1    rec1 is greater than rec2
+            
+      May Move Memory: No
+
+----------------------------------------------------------
+int DB_ParseFISL(DBBLOCK *dblk, char far *InFISL, char far
+*OutTOKEN, int OutBufSize, int *OutExpLen);
+      Parses a FISL string at InFISL and puts the resulting
+token string at OutTOKEN.  Any error condition sets the int
+pointed to by OutExpLen to the character position where the
+error was first recognized.  If the parsing was successful,
+OutExpLen is set to the leng guaranteed to exist for all
+databases.  Equivalent to a SetCurrentViewpt to 0. 
+
+      Error returns are the same for SetCurrentViewpoint. 
+ 
+----------------------------------------------------------
+int DB_FindRecord(DBBLOCK *dblk, char recordtype, void far
+*searchstring, RECORDNUM begin, RECORDNUM end,int flags,
+unsigned int *pos); 
+      Finds a record by sequential search.  Begin and end
+delimit the range of records, and searchstring is the string
+to be searched for.  If begin is greater than end, the
+search is performed backwards.  The search uses the raw
+record bytes of the specified type: for data records, even
+non-field locations are searched.  Flags is a combination of
+the bits DB_FIND_CASE and DB_FIND_FIRST.  If DB_FIND_CASE is
+used, the search is case-sensitive; the default is
+non-case-sensitive.  IMPORTANT:  If DB_FIND_FIRST is used,
+the search begins at the 0th byte of record at begin;
+OTHERWISE, the byte after pos is used.  This allows
+sequential searches to pick up where they left off if the
+DB_FIND_FIRST flag is omitted.  If the int at pos is garbage
+and the DB_FIND_FIRST flag is not set, the find operation
+will be unreliable.  The position found in the record is
+returned in pos.  Note that this function does not search
+ROM data records.  This function is not typically used for
+data records--see FindDataRecord. 
+ 
+      Returns: 
+      0..32767    Index of record found. 
+      DB_NOTFOUND       Find failed. 
+             
+      May Move Memory: No 
+
+------------------------------------------------------------
+int DB_FindDataRecord(DBBLOCK *dblk, char far *searchstring,
+RECORDNUM begin, RECORDNUM end, int flags, int *field,
+unsigned int *pos); 
+      Finds a string in a data record only (on disk or ROM). 
+This find will search the string representations of the
+record, not the raw binary data.  E.g., this search would
+find a date string "2/12/1992" in the record, whereas
+DB_FindRecord would not.  In addition to the comments above
+for DB_FindRecord:  The additional flags DB_FIND_AUTOGOTO,
+DB_FIND_DIRECT, DB_FIND_NOTES are available. 
+DB_FIND_AUTOGOTO searches match only if the position found
+is at the first character of the field, and only searches
+the single field passed in *field.  DB_FIND_DIRECT
+interprets begin and end as direct record numbers; by
+default, the numbers refer to viewpoint entries. 
+DB_FIND_NOTES will search any associated notes with the data
+records.  If a match is found in a note, the record number
+returned is that of the data record, not that of the
+attached note.   
+ 
+
+--------------------------------------------------------
+Miscellaneous 
+
+----------------------------------------
+Localization, Sorting and Omnibook Files
+
+Normally on opening a database, the last used viewpoint table is
+loaded by the database engine.  However, this viewpoint table may
+be invalid if something about the system sort order has changed. 
+Changing how the sorting works (by changing the country, or
+numbers first, etc.) causes the database engine to invalidate all
+viewpoint tables so they can be reconstructed.
+
+Changing Country, CodePage, Sort, Keyboard, and Language codes in
+Setup will cause viewpoint invalidation, as well as the changing
+the presence of KeyBez.  A hash value is computed (called
+magicviewptsort in the DBHEADER) from these values, and if it
+changes, all the viewpoint tables have a word of 0xFFFF written
+to them.  This is how invalid viewpoints are marked; any
+viewpoint that has only 0xFFFF as the entry will be created from
+scratch when it is switched to.  The default value of this hash
+value (IN THE US ONLY!) is 0x8437, and it is always at location 
+0x0000001b in the file.
+
+The Omnibook uses the same database file format, but can be 
+distinguished by having a magic hash value of 0x0000.  If the
+database opens what it recognizes as an Omnibook file, in
+addition to invalidating the viewpoint tables, another operation
+is applied to the file.  All database records are scanned, and
+those with upper ASCII data (values 0x80..0xff) are converted
+from Windows ANSI code page (i.e. the Omnibook) to code page 850
+(that in the 100LX).  The "closest" character in the 850 code
+page is chosen as a match.  The conversion is *not* lossless; a
+similar conversion is made by the Omnibook, and the original
+characters are not guaranteed to appear.
+
+Only the string portions of the following record types are
+converted: TYPE_CATEGORY, TYPE_FIELDDEF, TYPE_VIEWPTDEF,
+TYPE_DATA, TYPE_NOTE.  The bit DB_WASTRANSLATED is set in the
+database flags so the application can translate other portions of
+user records if necessary with the functions DB_WinStrTo850 and
+DB_WinGledTo850.
+
+ 
+------------
+Far Pointers 
+Some of the calls to the database engine (namely those
+marked as "May Move Memory") may request more/less memory to
+expand/shrink viewpt, lookup or other memory blocks.  This
+request will cause far pointers pointing at SysMgr far
+memory blocks to change.  In particular cases, these calls
+may not move memory.  HOWEVER, TO BE COMPLETELY SAFE reload
+any far pointers that point into far memory blocks after
+calling these functions.  If you always access the far
+memory block by double indirection, you should have nothing
+to worry about. 
+ 
+----------------------------------------
+User defined Field types (FieldCallBack) 
+FieldCallBack is the method used by the DB Engine to support
+field types not natively used by the database.  To do this,
+the application creates fields with their own field types
+(starting at USER_FIELD).  Those fields are automatically
+registered as callback fields.  The application additionally
+must provide a function on opening/creating the database
+that knows how to deal with the additional types.  This
+function is the FieldCallBack. 
+ 
+The FieldCallBack function MUST have the following
+prototype: 
+
+int far CallBack(DBBLOCK *dblk,int action, int
+buffersize, int intarg, void far *ptrarg1, void far
+*ptrarg2); 
+ 
+Although the DBBLOCK is passed to the callback, it should be
+used for reading database structures only.  The CallBack
+function is not allowed to make any calls to the database
+engine.  The DB Engine will use the callback with the
+following calling sequences: 
+ 
+1. CallBack(dblk, USERTYPE_TOSTRING, buffersize,
+userfieldtype, userptr, buffer); 
+   Used to convert the user defined fields into a string. 
+userfieldtype identifies the field type, userptr is a
+pointer to the user field in a data record, buffer points to
+a ram buffer allocated by the Engine to hold the ASCIIZ
+string, and buffersize is    the maximum size of the buffer.
+
+Under no circumstances should the callback copy more than
+buffersize bytes into the buffer; if the string is too
+large, it should be truncated. The return value is ignored. 
+    
+2. CallBack(dblk,USERTYPE_FROMSTRING, userptrbufsize, (int
+near *)size, buffer, userptr); 
+   Used to convert a string into some user defined field
+type. buffer points to the ASCIIZ string to convert, and
+userptr points to the buffer to place the converted type. 
+userptrbufsize is the size of the buffer at userptr: if the
+string cannot be converted, the callback should return
+DB_SYNTAX.  If the callback cannot fit the converted result
+into the buffer at userptr, the callback should return
+DB_MEMORY.  Otherwise, the function should return the type
+of the data that was converted, and place the size of the
+converted type in the int pointed at by size.  Under no
+circumstances should the callback copy more than
+userptrbufsize bytes into the buffer. 
+    
+3. CallBack(dblk,USERTYPE_COMPARE, 0,  userfieldtype,
+userptr1, userptr2); 
+   Used to compare two user defined fields. userfieldtype is
+used to identify the field type for both user-defined
+fields.  userptr1 and userptr2 point to the those fields in
+(perhaps) two different data records. The value returned
+should be 1 if  *userptr   1>*userptr2, -1 if
+*userptr1<*userptr2, and 0 if  *userptr1==*userptr2 (just
+like C's strcmp). 
+    
+4. CallBack(dblk,USERTYPE_CONTAINS, 0, userfieldtype,
+userptr, buffer); 
+   Used to see if a string is contained in the user type. 
+This is provided in case the user field has some special
+meaning for the CONTAINS relation (e.g. the user type is a
+set).  The number returned should be 0 if the string at
+buffer is not contained i   n userptr, else the returned
+value should be >0. 
+    
+   A return value of DB_COMPLEX indicates to the DB Engine
+that the CallBack does not provide the CONTAINS relation: 
+in this case, the DB Engine simply uses USERTYPE_TOSTRING to
+convert the type to a string and does a string search.  Note
+that since the Database uses a limited size buffer to
+convert the string, very large fields should support their
+own CONTAINS. 
+    
+5. ROM CallBack 
+   ROMCallBack is another method of expanding the database,
+by providing data records that do not physically exist in
+the file.  The ROM method can be applicable to other types
+of not-saved or calculated records with the following
+limitations: 
+    
+a. The ROM records must be data records, use contiguous
+record numbers, and the record numbers must start at 0. 
+Viewpointing may still resort the records as necessary. 
+b. The number of ROM records must be known before the file
+is opened, and cannot be changed dynamically. 
+c. The ROM records cannot be deleted, but can be overwritten
+by RAM records. 
+d. The database acts if deleted records below the ROM record
+count are "showing" through to the ROM records; If a
+record is added below the ROM record count, it blocks the
+ROM record from showing. 
+e. The prototype for the ROM callback function must look
+like this: 
+    
+int far ROMCallBack(DBBLOCK *dblk, int n, char far
+*dest, int bufsize, int *sizeread); 
+    
+   The WorldTime application uses the ROM record feature of
+the database engine. 
+
+--------------------
+User defined Records 
+   User applications can define their own record types
+starting at type TYPE_USER.  Record types should be
+sequential (TYPE_USER, TYPE_USER+1, etc.) and each
+application is limited to 17 user-defined record types. 
+User record types are useful for configuration
+information or special tables, but note that they cannot
+appear in viewpoints. 
+    
+---------------------------
+Record Level Reconciliation 
+   Record level reconciliation of two databases will be
+provided by an auxiliary PC application, but the database
+engine will provide enough information to make it possible. 
+The typical application of this would be to maintain a
+database on both a PC and    100LX.  Although the same
+database would exist in both places, occasional
+reconciliation would be needed to allow adds, modifies, and
+deletes to show up in both databases even if they were made
+to only one or the other of the two databases. 
+    
+   The time of creation (or last reconciliation) of the
+databases and a modified-since-last-reconciliation bit for
+each record will be used to perform the comparison.  After a
+reconciliation, the reconciliation timestamp will be
+refreshed for both database   s, and all record modified
+bits will be cleared.  During matching of the records from
+the two databases, these cases need to be considered: 
+1. Both records have not been modified; Action: take either
+one of the records as they should be equivalent. 
+2. One record is modified, one is not; Action: take the 
+modified record. 
+3. Both records are modified; Action: prompt the user for
+which record to accept.  
+4. One record is not modified, the other is missing; Action:
+prompt the user to remove or add the non-modified record,
+default to remove.  Note that deleted records do not need to
+retain any stubs with this scheme. 
+5. One record is modified, the other is missing; Action: add
+the record. 
+6. If the reconciliation dates of the two files are
+different, then the two files have never been merged.  
+In this case, the program will act as the current CPACK
+merge does, and keep all records in both databases.  Note that
+this is not the case for a file that has been copied; this will
+have the same reconciliation date, so will use the more
+intelligent algorithm.
+
+-------------------------------------
+/* Sample C Code of a Database Event Loop */
+
+/* NOTE: The following code is not complete and provided for
+   purposes of learning about the event loop. For experimentation,
+   and as a typing aid, this portion of this file appears in
+   \SOURCE as DBEVENT.C */
+
+/**************************************************************************
+***************************************************************************
+*                                                                    
+*   M     M      A     IIIII   N     N
+*   MM   MM     A A      I     NN    N
+*   M M M M    A   A     I     N N   N
+*   M  M  M   AAAAAAA    I     N  N  N
+*   M     M   A     A    I     N   N N
+*   M     M   A     A    I     N    NN
+*   M     M   A     A  IIIII   N     N
+*
+***************************************************************************
+***************************************************************************/
+
+/*****************************************************************************
+******************************************************************************
+*
+* Global Data
+*
+******************************************************************************
+******************************************************************************/
+EVENT app_event;          /* System manager event struct */
+CAPBLOCK CapData;         /* CAP application data block */
+
+/*----------------------------------------------------------------------
+* far ptrs to be managed by sysmgr in event that memory moves. They must
+* be registered with the sysmgr during initialization. The first 
+* MAX_CARD_WNDS are used to handle local titles for card windows, while the
+* remainder are for database engine, note, multiline edit in general filter,
+* and other miscellaneous uses that involve allocating memory block.
+*----------------------------------------------------------------------*/
+char far *CardWndTitlePtrs[MAX_CARD_WNDS + 27]; /* sysmgr farptrs */
+
+/*----------------------------------------------------------------------
+* Multitudinous other data declarations specific to your program would 
+* normally appear here, but are excluded from this example.
+*----------------------------------------------------------------------*/
+
+/*****************************************************************************
+******************************************************************************
+*
+* Main entry point and event loop.
+*
+* Main contains init calls, event loop, error check, and uninit calls.
+* This event loop is the ONLY one in the entire application.
+*
+******************************************************************************
+*****************************************************************************/
+void main(int argc, char *argv[])
+{
+  int hotkey, appnum, err;
+
+/*-----------------------------------------------------------
+* determine which app is being run
+*-----------------------------------------------------------*/
+  AppFlavor = PHONE;
+  IndexBlock.Done = FALSE;        /* Set terminate flag to FALSE before init */
+  Initialize();
+
+/*-----------------------------------------------------------
+* loop repeatedly for events until Done goes TRUE.
+*-----------------------------------------------------------*/
+ eventloopstart:
+  while (!IndexBlock.Done) {
+
+/*----------------------------------------------------------------------
+* if there is stuff that could be lost from buffered disk i/o, send it
+* on through before asking for keystroke.
+*----------------------------------------------------------------------*/
+    if (Db.flags & DB_SHOULDFLUSH) {   /* protect against warmstart */
+      if (DB_FlushFile(&Db) == DB_CLOSE)
+	SetError(ERR_WRITE);
+    }
+
+/*----------------------------------------------------------------------
+* Create error dlg if any errors reported during last event (or init).
+* if db is closed and nofilewnd (DummyWnd) has not yet been launched, 
+* do it before creating error dlg. If no errors, cruise on by.
+*----------------------------------------------------------------------*/
+    if (err = GetError()) {                  /* report errors if any */
+      SendMsg(&ErrorDlg,CREATE,CREATE_FOCUS,0);
+    }
+
+/*----------------------------------------------------------------------
+* Get an event (a keystroke or null(timer) event are the usuals.
+*----------------------------------------------------------------------*/
+  maction:
+    app_event.do_event = DO_EVENT;
+    m_action (&app_event);         /* Grab system manager event */
+
+    if (DB_CardChanged(&Db)<0)
+      goto restart;
+
+    switch (app_event.kind) {      /* Branch on SysMgr event */
+
+    case E_KEY:                    /* users, the source of all troubles */
+      if (GetFocus())
+	SendFocusMsg(KEYSTROKE, 
+		Fix101Key(app_event.data,app_event.scan), 
+		app_event.scan);
+      else
+	goto restart;
+      break;
+      
+    case E_REFRESH:                /* redraw after sysmgr mucks up screen */
+      SendAllMsg(DRAW, DRAW_ALL, 0);
+      break;
+
+    case E_ACTIV:                  /* reactivate on rtn from other app */
+      HourglassOn(-1,-1);
+      if (DB_Reactivate(&Db) != DB_OK) {  /* some file badness, restart app */
+      restart:
+	m_fini();                  /* but just in case, */
+	return;                    /* bail out cuz windows can't be operated */
+      }
+      ReactivateLHAPI(&CapData);   /* things are OK, Hello CAP */
+      SyncLHAPIKeyState();
+      break;
+      
+    case E_DEACT:                  /* switch to another app */
+      DB_Deactivate(&Db);
+      DeactivateLHAPI();
+      goto maction;
+      break;
+      
+    case E_TERM:                   /* enforced bailout */
+      IndexBlock.Done = TRUE;
+      break;
+      
+    case E_NONE:
+      SendMsg(GetFocus(), NULLEVENT, app_event.shifts, app_event.scan);
+      HandleClock();                 /* show ticking clock (if enabled) */
+      break;
+      
+    }                     /* end of switch on event type */
+  }                       /* end of event loop */
+
+/*-----------------------------------------------------------
+* Proof that miracles exist: no reboot this time.
+*-----------------------------------------------------------*/
+  HourglassOn(-1,-1);
+
+  CloseDbFile(&Db);       /* close current database */
+  m_fini();               /* Tell System Manager goodbye */
+}
+
+/*****************************************************************************
+******************************************************************************
+*
+*  Initialize CAP, SysMgr, Database, and data structures
+*
+******************************************************************************
+******************************************************************************/
+void Initialize(void)
+{
+  int i, size, err = 0;
+  char *titleptr;
+  char *bufptr;
+  char *pstuffptr;
+
+/*----------------------------------------------------------------------
+* Greet all the important local personalities
+*----------------------------------------------------------------------*/
+  m_init_app(SYSTEM_MANAGER_VERSION);   /* Hello SysMgr */
+  InitializeCAP(&CapData);              /* Hello CAP */
+
+/*----------------------------------------------------------------------
+* setup far internal far pointers to be maintained by sysmgr. Initialize
+* the first block for use by card window titles.
+*----------------------------------------------------------------------*/
+  HourglassOn(-1,-1);
+
+  titleptr = CardWndTitles;
+  m_reg_far(&CardWndTitlePtrs, countof(CardWndTitlePtrs), 4); 
+  for (i=0; i<MAX_CARD_WNDS; i++) {
+    CardWndTitlePtrs[i] = titleptr;
+    titleptr += DB_FIELDNAMELENGTH + 1;
+    CardWindow[i].Title = &CardWndTitlePtrs[i];
+  }
+  
+  MultiBuffer = FilterBuffer;
+  EscBuffer = FileSpace;
+  LineStarts = Scratch2;
+
+/*----------------------------------------------------------------------
+* Set fonts, map in the resource file and init resource ptrs.
+*----------------------------------------------------------------------*/
+  RegisterFont(FONT_NORMAL);       /* be as normal as possible */
+  SetMenuFont(FONT_NORMAL);
+  SetDefaultFont(FONT_NORMAL);
+
+  map_resource_file("CDBAPP.RI");  /* map in resourced msgs */
+  Init_Db_Strings();               /* create access to those msgs */
+
+/*-----------------------------------------------------------
+* App specific initialization 
+*
+* Must set EnvFileName, DfltDataFileName, ResourceFileName,
+* DfltSmartClipName1/2, DfltCategory.
+*-----------------------------------------------------------*/
+  InitAppPhone();
+/*----------------------------------------------------------------------
+* register the name of the application
+* with the system manager for use in case low memory prompting is 
+* needed.
+*----------------------------------------------------------------------*/
+  m_reg_app_name(*IndexBlock.AppName); /* register appname */
+
+/*----------------------------------------------------------------------
+* Init file dlgs, empty index window, and no-file window.
+*----------------------------------------------------------------------*/
+  InitializeFileDialogs(); /* Hello File Dialogs */
+  *BackupFileName = 0;     /* No 2nd chance if loadfile fails */
+
+  SendMsg(&TopWnd,CREATE,CREATE_FOCUS,0); /* Create main application window */
+  SendMsg(&DummyWnd, CREATE, CREATE_FOCUS, 0);
+  HourglassOn(-1,-1);      /* put hourglass up again now that windows up */
+
+/*----------------------------------------------------------------------
+* Get name of current data file from environment file, use default file
+* name if no environment file exists.
+*----------------------------------------------------------------------*/
+  if (_dos_open(EnvFileName, O_RDWR, &EnvHandle))
+    lstrcpy(FileSpec, DfltDataFileName);
+  else {
+    _dos_lseek(EnvHandle, 0, SEEK_SET);
+    _dos_read(EnvHandle, FileSpec, sizeof(Db.filename), &size);
+
+/*----------------------------------------------------------------------
+* get printer setup information. dflts are already in place if read fails
+*----------------------------------------------------------------------*/
+    i = sizeof(INDEXPRINTBLOCK);
+    bufptr = Record;
+    _dos_read(EnvHandle, bufptr, i, &size);    /* read print setup info */
+    if (size == i) {
+      pstuffptr = (char *)&PStuff;
+      for (;i;i--) *(pstuffptr++) = *(bufptr++);
+    }
+  close:
+    _dos_close(EnvHandle);
+  }
+/*----------------------------------------------------------------------
+* init the db engine
+*----------------------------------------------------------------------*/
+  err = DB_Init();
+  if (err || GetError()) {
+    SetError(ERR_DBINIT);
+    HourglassOff();
+    return;
+  }
+ 
+/*----------------------------------------------------------------------
+* if file is not default and does not exist, create no file state 
+* instead
+*----------------------------------------------------------------------*/
+  if ((lstrcmp(FileSpec, DfltDataFileName)) && (!(Exists(FileSpec)))) {
+    SetError(ERR_OPEN);
+    HourglassOff();
+    return;
+  }
+/*----------------------------------------------------------------------
+* open up the datafile
+*----------------------------------------------------------------------*/
+  LoadFileShell(NULL);
+}
+
+/*****************************************************************************
+******************************************************************************
+*
+* Launches app; closes current app and launches again - last ditch
+* recovery system when datafile deleted underneath. 
+*
+******************************************************************************
+******************************************************************************/
+int RestartApp(int HotKey)
+{
+  struct task far *TCB = m_get_TCB();
+  int i;
+
+  for (i=0; i<TASKCOUNT; i++, TCB++)
+    if (HotKey==TCB->t_hotkey) goto launch;
+  return -1;
+  
+launch:
+  app_event.e_launch_task = i;                      /* Index of the app we want */
+  app_event.e_launch_type = LT_CLOSE_THEN_LAUNCH;   /* Close us out first */
+  app_event.do_event = DO_LAUNCH;
+  m_action(&app_event);              /* Launch our app */
+  return 1;
+}

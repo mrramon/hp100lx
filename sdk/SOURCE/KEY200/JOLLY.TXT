@@ -1,0 +1,5 @@
+cc:mail    : Ctrl Phone ^Phone ^Ctrl
+Ctrl Phone : ^Ctrl cc:mail ^cc:mail Ctrl
+Memo       : Ctrl Memo ^Memo ^Ctrl
+Ctrl Memo  : ^Ctrl Memo ^Memo Ctrl
+a          : a ^a b ^b

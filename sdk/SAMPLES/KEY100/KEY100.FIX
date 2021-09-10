@@ -1,0 +1,36 @@
+KEY100 Version 1.01
+-------------------
+Thanks to all of you who have used KEY100 and posted or mailed me
+comments and bugs (and for beta testing <sheepish grin>).
+This KEY100 has the following fixes.
+
+* The file handle wasn't getting closed, so if you ran KEY100 enough
+  times in a row, you would run out of file handles.
+
+* Any FN keys that don't have a green label (like FN+F1) worked properly 
+  in 1.00, but those that did have green labels didn't work.  Added FN 
+  key states for the following keys: ScrollLock, Insert, Home, PgUp, 
+  PgDn, End, PrintScreen, Cut, Copy, Paste, Date, Time, Zoom.  Zoom only 
+  works in the HP Apps.
+
+* Added key labels for ; [ ] ' ` and CAPS.  These keys are in different 
+  locations on the 100LX than on the PC keyboard, but the BIOS tricks 
+  the INT 9 code into looking just like a real PC.  That is, to get a 
+  semi colon, you don't pass Shift 4 to int 9, but Shift ;, so the true 
+  PC keycaps had to be added.  (This is the first time I've had PC 
+  compatibility bite me going in the other direction!)
+
+* Since I added ';' as a keycap, I had to change the comment character to !
+
+* Fixed the numbers printed for bytes left and key definition processed.
+
+* Of course, fixed the help screen and accompanying document for these changes.
+
+As an additional note:  the following keys are 'stolen' by the BIOS
+before they are passed to INT 9, and so are unuseable:
+ON *, ON /, ON -, ON +, ON -, Zoom (in text modes), Menu Arrows
+
+Also, don't include ^Fn in using the Fn key--it just doubles for a Fn
+press.  This is the only key you don't need to "break".
+
+--Andy Gryc

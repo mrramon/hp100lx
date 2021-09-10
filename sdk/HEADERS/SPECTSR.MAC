@@ -1,0 +1,47 @@
+; $Header:   T:/HH/INCLUDE/VCS/SPECTSR.MAV   1.0   30 Jun 1992 12:45:08   PETERR  $
+;****************************************************************
+; JAGUAR ACCESSORIES KERNEL
+;
+; copyright(c) 1990
+; Lotus Development Corporation
+; All Rights Reserved
+;
+; EVENT.MAC - 
+;****************************************************************
+; $Log:   T:/HH/INCLUDE/VCS/SPECTSR.MAV  $
+;  
+;     Rev 1.0   30 Jun 1992 12:45:08   PETERR
+;  Initial revision.
+;  
+;     Rev 1.4   27 May 1992 09:10:06   PETERR
+;  Improved comments and modified structure initialization
+;  
+
+
+
+
+; Special TSR header structure
+
+
+SPEC_TSR_SIG	equ	1095976269	;PI**16
+
+S_spec_TSR_hdr	STRUC
+  TSR_hdr_init	 dw	?		;Initialization address
+		 dw	0		;Segment set by sysmgr at load
+  TSR_mem_bytes	 dd	?		;Static mem required (if > file size)
+  TSR_hdr_sig	 dd	SPEC_TSR_SIG	;Special signature identifier
+  TSR_hdr_parent db	0ffh	;If loaded through sysmgr, TCB entry of parent
+S_spec_TSR_hdr	ENDS
+
+
+;DOS FILEINFO structure
+
+
+FILEINFO	STRUC
+	fireserved	db	21 dup(?)	;Reserved
+	fiattribute	db	?		;attribute of found file
+	fifiletime	dw	?		;time of last write
+	fifiledate	dw	?		;date of last write
+	fisize		dd	?		;file size
+	fifilename	db	13 dup(?)	;filename and extension
+FILEINFO	ENDS

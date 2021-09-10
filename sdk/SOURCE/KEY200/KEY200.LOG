@@ -1,0 +1,10 @@
+ Assembling: key200.asm
+
+Microsoft (R) Segmented-Executable Linker  Version 5.10    
+Copyright (C) Microsoft Corp 1984-1990.  All rights reserved.
+
+Object Modules [.OBJ]: key200.obj/t 
+Run File [key200.com]: "key200.com"
+List File [NUL.MAP]: NUL
+Libraries [.LIB]: 
+Definitions File [NUL.DEF]: ;

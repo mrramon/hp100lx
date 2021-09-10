@@ -1,0 +1,111 @@
+
+    GLEDFF.DOC --- formats for GLED hidden control sequences (0xff bracketed)
+    -------------------------------------------------------------------------
+
+In a GLED document, a 13 (CR) character serves as a HARD carriage return
+(always followed by a 10 LF), while a 10 (LF) character by itself serves as
+a SOFT carriage return (which may be moved or deleted by auto-word wrap).
+
+Special formatting information in the body of a GLED note is of the form:
+
+	0xff <length_byte> [body_bytes] <length_byte> 0xff
+
+This allows motion both forwards and backwards.  If the first <length_byte> is
+added to the address at which it exists, the new address will be the byte AFTER
+the final 0xff.  If the second <length byte> is subtracted from the address at
+which it exists, the new address will be the location of the first 0xff.  Hence
+the first length_byte is always 1 greater than the last (ending) length_byte.
+
+  ษออ NOTE! ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+  บ When inserting a GLED "FF" block into a document buffer using the     บ
+  บ GLED_INSBUF or GLED_INSBLK commands, it is CRITICAL that the          บ
+  บ GF_FORMATTED bit be set in the gledstuff MainFlags, or GLED will      บ
+  บ strip all 0xFF, 0x00, and stand-alone 0x0D bytes from the inserted    บ
+  บ stream, by replacing them with spaces.  (0x0D must ALWAYS be followed บ
+  บ by 0x0A.)  GLED_INSBUF and GLED_INSBLK return FALSE if any of these   บ
+  บ chars were replaced by spaces, otherwise TRUE is returned.            บ
+  ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+
+The [body_bytes] are one of:
+
+0x00	GLED "formatted" document header containing:
+		0x45	\
+		0x4B	/ unique "GLED" marker (0xff 0x33 0x00 0x45 0x4b ...)
+		----	left margin value
+		----	right margin value
+		----	top margin value
+		----	bottom margin value
+		----	Outline numeration
+		----	Outline indent amount
+		tttt	32 bytes tab settings
+
+  ษออ NOTE! ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+  บ A GLED "formatted" document can be distinguished from any other type  บ
+  บ of file by reading the first five bytes and examining them except for บ
+  บ the second byte.  A GLED "formatted" document will ALWAYS begin with  บ
+  บ a type 0 format block as described above.  Therefore, the first five  บ
+  บ bytes will ALWAYS be:                                                 บ
+  บ        0xFF 0xll 0x00 0x45 0x4B                                       บ
+  บ where the 0xll byte is the "length" of the block (which may change at บ
+  บ some point) and should be ignored.  However, the other four bytes     บ
+  บ provide a roughly 1 in 2^32 chance of trying to view a non-GLED file  บ
+  บ as if it were a GLED file.  All files whose first five bytes don't    บ
+  บ match these criteria should be viewed as either ASCII or BINARY files.บ
+  ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+
+0x01	PAGE HEADER alignment and text
+
+	0xFF 0x89 0x01 <word align> <word len> <128 bytes header> 0x88 0xFF
+
+0x02	PAGE FOOTER alignment and text
+
+	0xFF 0x89 0x01 <word align> <word len> <128 bytes header> 0x88 0xFF
+
+  ษออ NOTE! ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+  บ A GLED "formatted" document is a normal ASCII file with the exception บ
+  บ that is contains GLED "FF" blocks that contain formatting information บ
+  บ and there are no carriage returns or linefeeds EXCEPT at the end of   บ
+  บ paragraphs (so, an entire paragraph appears in the file as a single   บ
+  บ LONG line terminated by a CR/LF pair).  A GLED "formatted" file alwaysบ
+  บ starts with three GLED "FF" blocks of types 0x00, 0x01, and 0x02. Thisบ
+  บ is then followed by normal ASCII text with optional embedded "FF"     บ
+  บ blocks as described in this document.                                 บ
+  ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+
+0x10	OUTLINE HEADING (text of outline heading follows the special sequence
+	until a HARD CR (13)).  Format of OUTLINE HEADING specseq is:
+
+     0xFF 0x0D  0x10  lev#  lev0 lev1 lev2 lev3 lev4 lev5 lev6 lev7 0x0C 0xFF
+
+0x20	BOLD off	0xFF 0x04 0x20 0x03 0xFF
+0x21	BOLD on		0xFF 0x04 0x21 0x03 0xFF
+0x22	UNDERLINE off	0xFF 0x04 0x22 0x03 0xFF
+0x23	UNDERLINE on	0xFF 0x04 0x23 0x03 0xFF
+
+0x2d xx	Literal byte value, where 'xx' is the byte value
+0x2e xy	change alignment from 'x' to 'y' where x and y have bit values of:
+		0 LEFT justify
+		1 CENTER
+		2 RIGHT justify
+		3 FULL justify
+
+0x40	GLED EXTENSION SEQUENCE  --- there is a hook provided in GLED for
+	the application to add it's own special formatting sequences, and to
+	get control for formatting the displaying/printing of the sequence.
+	The format of this field is:
+
+	0xFF len 0x40 id func# outlen <optional app-specific bytes> len 0xFF
+
+	where 'id' is a number representing the particular extension.  Memo
+	uses a value of 0x6E, kitchen-sink app uses 0x6F.  'func#' is
+	determined by the application, and is for it's use.  Memo has defined:
+
+		0	DATE (at time of printing)
+		1	TIME (at time of printing)
+		2	PAGE NUMBER (at time of printing)
+		3	PAGE BREAK
+
+	'outlen' is used internally by GLED as a place to store the length of
+	the formatted displayed output field.  This byte should not be modified
+	by the application.  The <optional app-specific bytes> may be anything,
+	as long as the total length of the 0xFF block is less than 256 bytes.

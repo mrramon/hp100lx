@@ -1,0 +1,57 @@
+Printing to a File in MEMO, getting escape sequences
+
+The escape sequences you get when printing to a file are as a result of
+the Bold/Underline features of Memo (in conjunction with the Header/Footer
+features).  There's not much you can do to get rid of them. That's the bad
+news.
+
+The good news is that there MAY be something you can do to get rid of them, as
+long as you're NOT using bold,underline, headers, or footers.  The MEMOED.ENV
+file contains a number of things, FOUR of which are 32-byte buffers which are
+normally 0-filled, but if you place a null-terminated string in one or more of
+these buffers, then whatever string you place there will OVERRIDE the default
+escape sequences sent to the printer for BOLD ON, BOLD OFF, UNDERLINE ON, and
+UNDERLINE OFF.  So, if you're not using bold/underline, simply placing a SPACE
+character into the first byte of each of those fields SHOULD get rid of those
+escape sequences.  The format (contents) of the MEMOED.ENV file are shown
+below.
+
+NOTE!!!! This is NOT supported and MAY change at moments notice in a
+future revision of the ROMs.
+
+        MemoFlags         2 bytes
+        unused            2 bytes
+        CurrentFont       2 bytes
+        RowSpacing        2 bytes
+        MainFlags         2 bytes
+        AutoSave          2 bytes
+        CursorBlink       2 bytes
+        TopMargin         2 bytes
+        BottomMargin      2 bytes
+        LinesPerPage      2 bytes
+        LastDir          52 bytes
+        LastFile1        65 bytes
+        LastFile2        65 bytes
+        DefExt            4 bytes
+        BoldOnBuff       32 bytes
+        BoldOffBuff      32 bytes
+        UnderOnBuff      32 bytes
+        UnderOffBuff     32 bytes
+        PrintInitCodes  128 bytes
+        PrintTermCodes  128 bytes
+        ASCIILeftMargin   2 bytes
+        ASCIIRightMargin  2 bytes
+
+Another thing worth pointing out: if you prefer a different "blink rate"
+for the cursor (in Memo, only) simply change the value of CursorBlink.  It's
+the number of 1/18ths seconds that the cursor is on/off.  If set to 0, the
+cursor won't blink at all.  Most of the rest is of minimal use.  Muck with at
+your own risk.
+
+NOTE: the above (the bold/underline on/off override buffers) were included as a
+"work-around" method of supporting other printer types besides those built into
+the ROM.  It can also be used to turn bold and/or underline into other kinds of
+character attributes (like italics) if you prefer those and your printer
+supports them with escape sequences or control codes.
+
+

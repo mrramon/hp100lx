@@ -1,0 +1,51 @@
+! This is an key remapping file that goes with KEY100.
+! There are various example key definitions in here; use them as a guide
+! to  how you can customize your 100 to work the way you want to.
+! TO SPEED UP KEY PROCESSING, REMOVE ALL COMMENTS
+!
+! The following key sequences are not reproducible with KEY100:
+! ON +, ON -, ON *, ON /, ON =, MENU Arrows, FN Zoom
+
+Ctrl Memo : ^Ctrl Ctrl ^Ctrl Memo ^Memo
+Memo      : Ctrl Memo ^Memo ^Ctrl
+
+! These two lines swap the Memo and Ctrl+Memo keys so that the
+! Memo key will bring up Notetaker, and vice versa.  Notice that
+! 1) The Ctrl Memo definition is before the Memo definition (by putting
+!    the "specialized" Memo key first, it ensures it will work
+!    correctly.
+! 2) Both key presses (Ctrl Memo) and key releases (^Memo ^Ctrl) are
+!    included--KEY100 requires both.
+! 3) Although the Memo key is easy, the Ctrl Memo key
+!    requires a little explanation.  The first ^Ctrl releases the Ctrl
+!    key (since it is already being held down at the time Ctrl Memo is
+!    recognized).  The next Ctrl ^Ctrl section is really only needed for
+!    KEYBEZ--if KEYBEZ is loaded, a solo Ctrl press and release switches
+!    bilingual keyboards.  The Ctrl ^Ctrl switches the keyboard back
+!    to what it was before.  Then, the Memo key is pressed and released.
+
+Menu e : e ^e x ^x a ^a m ^m p ^p l ^l e ^e    ! Types "example"
+Menu r : Ctrl Alt Del    ! Menu R for rebooting
+Menu ^Menu : Alt ^Alt    ! Now, only a solo Menu press brings up menu
+Menu :      ! Nothing allows us to null out Menu Press
+^Menu :     ! And don't let menu release do anything either
+
+! These four lines reconfigure the Menu key to provide potentially
+! many macros on the Menu key.  The first two are just some examples
+! of keys you might define.
+! The next reconfigures the menu key to be an Alt key. This does two things:
+!   1) it makes the menu react on releasing the menu key.
+!   2) it allows the menu key to toggle the menu on/off (like Alt does).
+! The following two macros cause the Menu press (which would normally
+! bring up the menu), and the menu release to do nothing.
+
+
+^More More : Filer ^Filer More ^More Menu ^Menu A ^A T ^T Enter ^Enter
+^Filer Filer : 1 ^1 0 ^0 0 ^0 Enter ^Enter
+! This allows a double click (a More key press & release, followed by
+! another with no intervening keystrokes) to terminate the SysMgr.  The
+! switch to Filer initially speeds up the process, since Filer will
+! then "own" the comm port, and the redirector doesn't need to be
+! terminated!
+! The corresponding action to get back into the SysMgr is a double click
+! on the Filer key.

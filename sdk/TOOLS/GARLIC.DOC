@@ -1,0 +1,198 @@
+GARLIC User's Guide 1.1
+========================
+
+What is GARLIC?
+---------------
+GARLIC is a 100LX database reconstructor.  It works by scanning a
+corrupt database for anything it can recognize as still valid records.
+It then outputs those, along with reconstructed tables and links, into a
+new file for you to examine and edit. (Although not written explicitly
+for the Omnibook, it should work on corrupt Omnibook files as well.)
+GARLIC WILL NOT WORK ON PASSWORDED FILES.
+
+
+When do I use GARLIC?
+---------------------
+Since GARLIC performs various mutilations on a file to make it readable,
+I would not recommend using it unless there is no other recourse.  That
+is, if you suddenly get a "Record Not Found" message (or something
+similar) on opening your only copy of a cherished vegetable database,
+this would be a good time.  If do you have a backup, the strategy I
+would recommend is to use GARLIC to retrieve all your new info, but
+merge it into your existing backup.
+
+
+Why do I need to use GARLIC?
+----------------------------
+Or, why is my database corrupt?  There are several known
+causes for this:
+  1) Rebooting machine *in the middle of a database operation*.
+     Note that rebooting the machine while it is idle and
+     waiting for a key is not a problem.
+  2) Having the machine die (battery failure) in the middle
+     of a database operation.  Like above, if the database is
+     open, but idle, this isn't a problem.  Since accessing
+     cards (especially Flash EPROM) draws significantly more
+     power than just idleing, these two events are more than
+     just statistically related, however.
+  3) Breaking a connection with a database file while it is
+     open over a remote redirector, i.e., the built-in
+     redirector, DOS 6's Interlink, or Lap Link.  There also
+     seems to be a class of bug common with redirectors that can
+     cause file corruption in certain circumstances, especially
+     if the connection is ended abnormally.
+  4) Using any type of binary filter on the file.  For example,
+     doing a file FTP but forgetting to use BINARY mode, or
+     loading the file into most word processors or text
+     editors and saving.  Editors have a tendency to mutilate
+     lots of special characters that can be present in a
+     binary file.  The built-in Memo program is no exception
+     to this--loading and editing, or just loading the file
+     when autosave will destroy the file beyond GARLICing.
+     For most of these cases, the file has lost most of the
+     significant information to be able to reconstruct the
+     file.  You can give GARLIC a try, but my guess is that
+     a backup will be your only recourse.
+  5) Beserk programs.  Portions of the database are held
+     in memory (namely the lookup table and database header)
+     and are written back to disk at times.  Programs (either
+     DOS or System Manager compliant) that are buggy can
+     potentially write into incorrect locations in memory,
+     and collide with these data structures.  Although
+     the likelihood is probably not high (since these programs
+     probably will also crash the machine), they could corrupt
+     a database.
+  5) As yet unfound bugs.  Hopefully these will be few and
+     far between (as they have been so far), but like any
+     piece of reasonably complicated software, the possibility
+     does exist.
+
+
+How do I use GARLIC?
+--------------------
+It's relatively simple.  Suppose your database FRED.PDB is
+corrupt and won't load.  At DOS, type:
+  GARLIC FRED.PDB FRED_FIX.PDB
+The first name is the corrupt file, and the second name is
+the file it will recreate.  The two filenames MUST be
+different--GARLIC needs to refer to the corrupt file as it
+creates the reconstructed file.
+
+If you are running GARLIC on the 100LX, you may need to
+terminate the System Manager or use the Filer DOS option
+to get enough memory.  GARLIC allocates several large buffers
+during reconstruction.
+
+After running it, you should see a bunch of diagnostic messages,
+then the program will terminate.  If you would like to see
+in more detail what is happening, use the /D switch (for
+example, GARLIC /D FRED.ADB FRED_FIX.ADB).  This is the
+DEBUG (or DEVELOPER, to suit your fancy) switch, and outputs
+all the changes being made to the file.  You'll probably
+want to redirect this into a file, as it is usually quite
+large.
+
+NOTE: Using the /D switch does not affect the resulting
+database, only the messages printed.  If you don't want to
+see a lot of clutter, don't use it, and you'll still get
+the same performance.
+
+A more drastic step is to use the /V switch.  This will remove
+all your subsetting information, and create a default subset.
+This is more likely to make the file open properly, but you'll
+lose all the defined subsets.
+
+
+Steps to take after GARLICing a file
+------------------------------------
+1) The first thing to do after GARLICing a file is to try to
+open the newly reconstructed copy (FRED_FIX in the above
+example).
+
+If it doesn't open, DON'T DESPAIR YET!  Try rerunning GARLIC with
+the /V switch.  This switch was added in GARLIC 1.1 to remove all
+existing subsets, and create a default subset.  I observed this
+to often be the only thing keeping the file from opening, and using
+/V will often clear up the problem.  Try opening the file again (if
+it opens, you'll have to add all your subsets back).
+
+If it still won't open, the file was so severly
+trashed that nothing could save it (especially since it
+does a better job fixing files than I can do manually!).
+(NOTE: If you can't open the file, you could try GARLICing
+the "fixed" file.  On at least one occassion, I've observed
+this to actually work!)
+
+2) If the file does open, look around for obviously bad info
+(like strings of random garbage), and delete them. If you notice
+any missing information, you might want to jot those entries
+down (don't enter them just yet).  If you're lucky, and the
+file was minorly corrupt, you might have all your data and
+no garbage records.  Consider yourself fortunate (and remember
+to back up your file!).  In general, the worse the corruption,
+the more missing or irrelevant information your file will
+have.  GARLIC attempts to reconstruct the structure of the
+database, but it can't patch garbage in the data itself.
+
+3) Create an empty file, and merge in the fixed file.  This
+allows either the database or appointment book a chance to
+fix up any remaining things that GARLIC might not have
+corrected.  If you cannot do this step (you get additional
+"Record Not Found" messages), you may need to go back to
+the fixed file and try to view the card view of each record
+in succession.  If you can't view a record, you should delete
+it.
+
+If you have a recent backup, you might try deleting all the
+"old" info from the fixed file (so that file only has records
+entered or modified since the backup was made), and merge that
+fixed file into your backup file.
+
+4) Manually add back any records you noticed were missing in
+steps 1-3.  If you have notes that are missing, you can get
+a copy of them by re-running GARLIC with the /D switch.
+Embedded in the output are the contents of any unattached notes
+that GARLIC deleted.  With some cutting and pasting you
+should be able to re-insert them.
+
+5) Back your file up in a safe place.  I can't answer how
+rigorous you should be about this, but you might ask yourself
+the following questions: How often do I change my data (hourly,
+daily, weekly)?  What would I do if I lost my data?  How
+expensive would losing my data be?  How accessible do I
+need my backups should anything unfortunate occur?  How does the
+inconvience of a backup weigh against the inconvience of
+reconstructing lost data.
+
+If you're using GARLIC for the first time, you can probably
+answer some of these questions.  You should consider keeping
+recent backups of sensitive data on a RAM/Flash card and/or
+on your PC.
+
+If you make nightly or very frequent backups, you should be
+careful about the effect I call "cascaded corruption".  That
+is, if you back up a corrupted file, you now have (ta-da)
+*two* corrupted files!  The only way to get around this is to
+1) make sure your files are okay before backing them up, or
+2) keep more than one backup (perhaps one for every day of the
+week?).
+
+NOTE: The other important thing to be aware of is that there is a bug
+related to opening a file that has been copied but has no subset/sort
+order.  Mostly, this will be an appointment book, but a database/phone
+book with no sort item selected will also show it.  This bug shows up
+infrequently, but may damage the file when you open it. Because of this,
+I would recommend that any nightly backups use a macro that first closes
+out all database apps (AppMgr/Close All is the easiest way to do this)
+before making the backup.
+
+You should carefully think about a backup strategy that works
+for you.
+
+
+Conclusion
+----------
+I hope that you never have to use this program.  If you
+do need to use it, I hope it works for you!  Good Luck!
+
+--Andy Gryc (andyg@hpcvra.cv.hp.com)

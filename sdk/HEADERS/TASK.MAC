@@ -1,0 +1,176 @@
+; $Header:   T:/HH/SYSMGR/VCS/TASK.MAV   1.10   29 Jan 1993 14:20:20   KIM  $
+;****************************************************************
+; MOREL ACCESSORIES KERNEL
+;
+; copyright(c) 1990
+; Lotus Development Corporation
+; All Rights Reserved
+;
+; TASK.MAC  -
+;****************************************************************
+;
+; $Log:   T:/HH/SYSMGR/VCS/TASK.MAV  $
+;  
+;     Rev 1.10   29 Jan 1993 14:20:20   KIM
+;  Removed some comments to make it easier to read.  Removed unused equate.
+;  
+;     Rev 1.9   11 Jan 1993 18:44:04   PETERR
+;  Replaced TCB based entries with new Hot-key lock state save and 3 spare bytes
+;  
+;     Rev 1.8   17 Dec 1992 10:58:04   PETERR
+;  Increased max task count from 25 to 30
+;  
+;     Rev 1.7   15 Oct 1992 10:18:00   KIM
+;  * * * SERVER DISK CRASH RECOVERY * * *
+;   1) The VCS directory was restored with Build 18 backup tape.
+;   2) This revision is to update files to Build 19.
+;   3) HELP.ASM, HELPSTUB.ASM, and HELPDATA.INC have post-Build 19 changes.
+;  
+;     Rev 1.6   05 Oct 1992 15:55:46   PETERR
+;  Increases TCB max app count from 18 to 25
+;  
+;     Rev 1.5   23 Jul 1992 12:14:56   PETERR
+;  Replaced TCB entry with one that indicates the rev of app
+;  
+;     Rev 1.4   01 May 1992 14:11:34   PETERR
+;  Added new structure entry for setting reserved entries
+;  
+;     Rev 1.3   30 Apr 1992 17:23:02   HOMI
+;  Added refresh and return states
+;  
+;     Rev 1.2   21 Apr 1992 17:27:46   KIM
+;  Enhanced Sys Mgr to handle ROM image files larger than 1Mb.
+;  Enhanced Sys Mgr to handle new Memory Bank information, for Bank Swapping,
+;  in the ROM image vector.  
+;  These changes were made across the RIB and SYSTEM MANAGER.
+;  Also, IMAGEVEC.MAC moved to the common include directory (HH\INCLUDE).
+;  
+;  
+;     Rev 1.1   09 Mar 1992 11:27:08   PETERR
+;  DOS mem & launch changes
+;  
+;     Rev 1.0   03 Dec 1991 16:21:22   DAVID
+;  Initial revision.
+;  
+
+
+
+QBTASKID equ	0
+
+	
+;Note - the task count size must consider the maximum allowable
+;	number of tasks.  It must also be set such that, when
+;	multiplied by the size of the TCB it will yeild a
+;	value of at least MaxAppsFileSize+76 (598 for the handset and 
+;	1100 for Motown version).  This is required as the tcb_array
+;	data arrea is used for file scratch prior to its initialization
+;	in tcb_init.
+
+	 ifdef	 MOTOWN
+TASKCOUNT 	equ 24
+MaxAppsFileSize	equ 1024
+MaxRAMApps	equ TASKCOUNT
+	 else
+TASKCOUNT	equ 30	;Used to be 18
+MaxAppsFileSize	equ 512
+MaxRAMApps	equ 10	;Used to be 8
+	 endif
+
+
+CONTEXT_LEN equ 14    ;total length of bytes when context is pushed on stack
+		      ; ax,bx,cx,dx,es,si,bp
+
+
+ifdef EMUL
+ImagevecSeg  equ    9000h     ;
+else
+ImagevecSeg  equ    0F000h    ;
+endif 
+
+ImagevecOff0 equ    7	      ;
+
+
+PS_CLOSED	equ	0	; not loaded in memory, no bits set
+PS_ACTIVE	equ	1	; foreground process
+PS_SUSP		equ	2	; suspended 
+PS_EXIT 	equ	4	; task called m_fini, waiting to be unloaded
+PS_YIELD	equ	8	; task called m_yield, goes to end of queue
+PS_EXIT_REFUSED	equ	10h	; task called m_no_fini
+
+PS_NOWAIT	equ	1h	; MASK for the nowait bit
+PS_123		equ	1	; Bit mask for 123
+
+
+
+;****************************************************************************
+;*******************			CAUTION
+;****************************************************************************
+;
+;    NOTE:   All COUGAR PS states have bit 5 (20h) set.  This was done for
+;	     quick return if no special processing required.
+
+
+
+;COUGAR states:
+PS_SPECIAL	equ	20h	;Special task in effect
+PS_LAUNCH_INIT	equ	21h	;task called m_launch command not implemented
+PS_LAUNCH_WAIT	equ	22h	;task called m_launch waiting for return
+PS_SWAP		equ	23h	;Swap to linked task
+PS_IC_INIT	equ	24h	;Initiating IC link
+PS_IC_CLOSE     EQU     25h
+PS_EXEC         EQU     26h
+PS_CLOSE_DOS    EQU     27h
+PS_REFRESH      equ     28h ;Send refresh singal to foreground task
+PS_RETURN       equ     29h ;Send refresh singal to foreground task
+
+
+TCB	STRUC
+	t_sp	      dw ?	 ; sp at last context sw/out
+	t_ss	      dw ?	 ; ss at last context sw/out
+	t_off_image   dw ?	 ; task's imagevec offset
+	t_seg_image   dw ?	 ; task's imagevec segment
+	t_ds	      dw ?	 ; saved DS register
+	t_memseg      dw ?	 ; base segment of allocation
+	t_hotkey      dw ?	 ; hotkey copied from imagevec
+
+        t_phypage     dw 2 dup (?) ; IMAGEVEC.wAS_PhyPage
+        t_logicalpage dw 2 dup (?) ; IMAGEVEC.wRS_LogicalPage
+        t_pagecount   dw 2 dup (?) ; IMAGEVEC.wRS_PageCount
+	t_chipsel     db 2 dup (?) ;
+	t_state       db ?	 ; task's state(CLOSE,ACTIVE,SUSP,BACK,EXIT)
+	t_is123       db ?	 ; this task is 123 (and other flags)
+	t_rsrc_seg    dw ?
+	t_nowait      db ?	 ; is task just testing for keys?
+	t_sys_ver     db ?	 ; Sysm version that app is aware of
+	t_extname     db 12 dup(?) ; name of app as presented to user
+	t_lock_state  db ?	 ;Hot key lockout
+	t_spare       db 3 dup(?); ;Spare
+	t_far_size    dw ?	;Number of far segment table entries
+	t_far_off     dw ?	;Offset into default DS of far table start
+	t_far_rsvrd   dw ?	;#Of far pntrs at END of table resvd for app
+	t_sp_status   db ?	;Special processing state (ex.no screen or kb)
+	t_sp_link     db ?	;Special processing linked task #
+	t_ic_u_loc    dw ?	;User pointer to linked pointer table ent
+	t_ic_o_loc    dw ?	;Owner pointer to own linked ptr table ent
+TCB	ENDS
+
+
+
+
+
+RSRC_ENTRY STRUC
+	RE_NAME		db 13 dup (0)	; asciz name of image
+	RE_PAD		db 0		; pad for C compat.
+	RE_ROMLOC	dd 0		; Location in ROM.
+RSRC_ENTRY ENDS
+
+
+
+;
+;	RAM Resident Apps Definitions
+;
+	ifdef	MOTOWN
+MinCSSize	equ	64*(1024/16)	; minimum paragraphs for code space
+	else
+MinCSSize	equ	1		; minimum paragraphs for code space
+	endif	; MOTOWN

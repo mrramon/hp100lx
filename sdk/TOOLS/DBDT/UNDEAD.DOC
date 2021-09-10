@@ -1,0 +1,29 @@
+UNDEAD is a utility that will reverse translate
+a DDT dump of a file and create a database file from it.  This
+helps a lot in reconstructing/patching databases 
+
+Example of how to use:
+
+Run DDT on the offending DB file, and redirect to a text file:
+   
+   DDT JUNK.PDB>TEMP.TMP
+
+The file can be edited to fix suspect items--patching values,
+deleting records, etc.  Note that only the hex representation is
+used in reconstructing.  The alpha off to the side is ignored.
+The original position in the file doesn't matter, only lines
+that look like      000000: 00 00 00 00 
+are used, and are written out in the order they occur (so reordering
+the file is possible without adjusting the 6 digit file position on
+the left margin).
+
+Now run UNDEAD on the file, giving the text file and name of the
+desired output database:
+  
+   UNDEAD TEMP.TMP FIXED.PDB
+
+Voila!  You have a new and improved database.
+
+
+
+

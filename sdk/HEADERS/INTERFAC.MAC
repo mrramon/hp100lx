@@ -1,0 +1,606 @@
+; Module interfac.mac  Version 1.3  Date 07/30/91  Time 15:36:25 
+;
+; ****************************************************************
+; *
+; *     Copyright(c) 1990  Lotus Development Corporation
+; *     All Rights Reserved
+; *
+; ****************************************************************/
+
+;/**************************************************************
+;  Services that are implemented in C in the System Manager
+;  are accessed through a common interface routine:
+;
+;       c_service()
+;
+;  Each of the applicable services has a macro implemented here.
+;  In addition to the documented arguments for the services,
+;  the macros makes the call to service with an argument 
+;  identifying the function.
+;
+;
+;  The extra constant is the service identifier.  This should be
+;  a word sized value, with the high byte equaling the service 
+;  class, and the low byte  equal to service number.  These 
+;  values must match the values in the general services 
+;  dispatcher (SERVICES.ASM) and the class specific dispatchers.  
+;
+;  Note that ALL
+;  pointer arguments are to be FAR (4 bytes) when passed to the
+;  System Manager, despite what the specification may currently
+;  say. 
+;
+;
+;  Finally, the macro itself makes a call to c_service(), with
+;  the above constants used as the first argument.  Following
+;  that are the actual arguments as supplied.  IMPORTANT NOTE: 
+;  all pointer arguments should be cast INSIDE THE MACRO 
+;  DEFINITION to far.  This is the simplest way to make sure
+;  that near pointers inside applications get expanded to the
+;  proper size.
+;
+;
+;
+; **************************************************************
+;
+;  All other functions that may be called by applications should
+;  have function prototypes in this file.  Again, ALL pointers
+;  will be FAR.  By using the prototype, the compiler will push 
+;  the segment value onto the stack, even though the parameter
+;  actually supplied may be a near pointer. 
+;
+;  Each of these functions must have assembly language wrappers
+;  written to make the SERVICES calls.
+;
+;
+; **************************************************************/
+; $Log:   T:/HH/INCLUDE/VCS/INTERFAC.MAV  $
+;  
+;     Rev 1.49   25 Mar 1993 05:40:28   KIM
+;  Moved entry for ComAutoSet to private.h/mac. Non-public routine.
+;  
+;     Rev 1.48   09 Mar 1993 00:47:38   RICHB
+;  New function ComAutoSet for the autostart listener.
+;  
+;     Rev 1.47   08 Mar 1993 15:39:28   PETERR
+;  Added new routine for rettong sysmgr critical error flag. m_reset_DOS_error()
+;  
+;     Rev 1.46   02 Mar 1993 00:47:16   KIM
+;  Changed scheme: m_signal_via_dispatcher not needed after all.
+;
+; **************************************************************/
+;
+;/* assign constants for the service class numbers */
+;/* SC_MAXNUM is the maximum class number allowed */
+;
+
+; homi
+ifdef   API2
+        CLASS_BASE              EQU     40h
+        FNCT_BASE               EQU     01h
+        SERVICESVECTOR          equ     7Eh                     ; homi
+        FIRST_ARG_LEN           equ     12 + 6 + 2              ; homi
+        DUMMY_ARG_SIZE          equ     6
+
+        SERVICES macro serclass,subfunc                 ; homi        
+                IF ((SC_&serclass GE 50h) AND (SC_&serclass LE 53h)) OR (SC_&serclass EQ 56h)         
+                        mov  di,(SC_&serclass SHL 8) OR Fun&serclass&subfunc
+                        xchg ax, di
+                ELSE
+                        mov  ax,(SC_&serclass SHL 8) OR Fun&serclass&subfunc
+                ENDIF
+                System_Service_Call
+        endm
+
+        SVCALL  macro serclass_subfunc                  ; homi
+                IF ((serclass_subfunc GE 5000h) AND (serclass_subfunc LE 53FFh))  \
+                OR ((serclass_subfunc GE 5600h) AND (serclass_subfunc LE 56FFh))        
+	                mov     di,serclass_subfunc
+                        xchg    ax, di
+                ELSE
+	                mov     ax,serclass_subfunc
+                ENDIF
+                System_Service_Call
+	endm
+
+        SMCALL  macro serclass_subfunc                  ; homi        
+                IF ((serclass_subfunc GE 5000h) AND (serclass_subfunc LE 53FFh))  \
+                OR ((serclass_subfunc GE 5600h) AND (serclass_subfunc LE 56FFh))        
+	                mov     di,serclass_subfunc
+                        xchg    ax, di
+                ELSE
+	                mov     ax,serclass_subfunc
+                ENDIF
+	        sub     sp,DUMMY_ARG_SIZE
+                System_Service_Call
+	        add     sp,DUMMY_ARG_SIZE
+	endm
+
+        ; Extended SM CALL 
+        SMCALLX macro serclass_subfunc, BytesPushed
+                IF ((serclass_subfunc GE 5000h) AND (serclass_subfunc LE 53FFh))  \
+                OR ((serclass_subfunc GE 5600h) AND (serclass_subfunc LE 56FFh))        
+	                mov     di,serclass_subfunc
+                        xchg    ax, di
+                ELSE
+	                mov     ax,serclass_subfunc
+                ENDIF
+	        sub     sp,DUMMY_ARG_SIZE
+                System_Service_Call
+	        add     sp,DUMMY_ARG_SIZE + BytesPushed
+	endm
+
+
+        IntSvcCall      MACRO
+                xchg    ax, di
+                System_Service_Call
+        ENDM
+
+        SC_APIMGT      EQU      (CLASS_BASE + 0)
+else
+        CLASS_BASE              EQU     0h
+        FNCT_BASE               EQU     0h
+        SERVICESVECTOR          equ     60h
+        FIRST_ARG_LEN           equ     12
+        DUMMY_ARG_SIZE          equ     4
+
+        SERVICES macro serclass,subfunc
+        	mov di,(SC_&serclass SHL 8) OR Fun&serclass&subfunc
+                System_Service_Call
+	endm
+
+        SVCALL  macro serclass_subfunc
+	        mov     di,serclass_subfunc
+                System_Service_Call
+	endm
+
+        SMCALL  macro serclass_subfunc
+	        mov     di,serclass_subfunc
+	        sub     sp,DUMMY_ARG_SIZE
+                System_Service_Call
+	        add     sp,DUMMY_ARG_SIZE
+	endm
+
+        SC_Fp           equ     (CLASS_BASE + 0)
+endif                                           
+     
+                                                ; homi CLASS_BASE  added
+SC_EVENT        equ     (CLASS_BASE + 1)
+SC_MENU         equ     (CLASS_BASE + 2)
+SC_SCREEN       equ     (CLASS_BASE + 3)
+SC_EDIT         equ     (CLASS_BASE + 4)
+SC_FILE         equ     (CLASS_BASE + 5)
+SC_PM           equ     (CLASS_BASE + 6)
+SC_CB           equ     (CLASS_BASE + 7)
+SC_SOUND        equ     (CLASS_BASE + 8)
+SC_MM           equ     (CLASS_BASE + 9)
+SC_BG           equ     (CLASS_BASE + 10)
+SC_DTIME        equ     (CLASS_BASE + 11)
+SC_PRINT        equ     (CLASS_BASE + 12)
+SC_CONFIG       equ     (CLASS_BASE + 13)
+SC_COMM         equ     (CLASS_BASE + 14)
+SC_MISC         equ     (CLASS_BASE + 15)
+SC_VIDVIR       equ     (CLASS_BASE + 16)
+SC_VIDPHY       equ     (CLASS_BASE + 17)
+SC_GRDISP       equ     (CLASS_BASE + 18)
+SC_KEY          equ     (CLASS_BASE + 19)
+SC_RSRC         equ     (CLASS_BASE + 20)
+SC_HELP         equ     (CLASS_BASE + 21)
+SC_COL          equ     (CLASS_BASE + 22)
+SC_RESV         equ     (CLASS_BASE + 23)       ; Resvd for ccMail use
+
+SC_RESERVED1    equ     (CLASS_BASE + 25)   ; For Sys Mgr internal use 
+
+ifdef XBS
+SC_XBS_UNIQUE	equ	(CLASS_BASE + 26)   ; Different platform
+else
+IT_IS_RESERVED	equ	(CLASS_BASE + 26)   ; Do not use
+endif
+
+
+
+
+SC_MAXNUM_JAG   equ     22
+SC_MAXNUM       equ     (CLASS_BASE + 22)
+
+; ---------------------------------------------------------------------------
+
+DataSegVector   equ     61h
+DataSegVector_2 equ     7Fh
+
+
+ifdef   API2
+
+;/* SC_APIMGT */
+
+F_M_GET_CLASS_TBL       EQU     (SC_APIMGT * 256) + 0 + FNCT_BASE
+F_M_INSERT_FNCT_TBL     EQU     (SC_APIMGT * 256) + 1 + FNCT_BASE
+F_M_REMOVE_FNCT_TBL     EQU     (SC_APIMGT * 256) + 2 + FNCT_BASE
+F_M_DISABLE_FNCT_TBL    EQU     (SC_APIMGT * 256) + 3 + FNCT_BASE
+F_M_ENABLE_FNCT_TBL     EQU     (SC_APIMGT * 256) + 4 + FNCT_BASE
+F_M_GET_FREE_API_CLASS  EQU     (SC_APIMGT * 256) + 5 + FNCT_BASE
+F_M_SEARCH_API_CLASS    EQU     (SC_APIMGT * 256) + 6 + FNCT_BASE
+
+; Class table groups
+API_RSRC_LIB            EQU     0           ;/* resource lib service */     
+API_DRIVERS             EQU     1           ;/* drivers              */
+API_SYSMGR              EQU     2           ;/* system manager       */
+API_APPS                EQU     3           ;/* application specific */
+
+endif
+
+
+;/* SC_EVENT */
+
+F_M_EVENT       equ     (SC_EVENT * 256) + 0 + FNCT_BASE
+F_M_NEVENT      equ     (SC_EVENT * 256) + 1 + FNCT_BASE
+F_M_SH_STATUS   equ     (SC_EVENT * 256) + 2 + FNCT_BASE
+; (SC_EVENT * 256)                       + 3 is reserved
+F_M_BRIDGE_SERV equ     (SC_EVENT * 256) + 4 + FNCT_BASE
+F_M_FLUSH_KB    equ     (SC_EVENT * 256) + 5 + FNCT_BASE
+F_M_YIELD       equ     (SC_EVENT * 256) + 6 + FNCT_BASE
+F_M_NO_FINI     equ     (SC_EVENT * 256) + 7 + FNCT_BASE
+F_M_ACTION      equ     (SC_EVENT * 256) + 8 + FNCT_BASE
+F_M_LAUNCH      equ     (SC_EVENT * 256) + 9 + FNCT_BASE
+F_M_GET_RUN_MODE equ    (SC_EVENT * 256) + 10 + FNCT_BASE
+F_M_IC_INIT     equ     (SC_EVENT * 256) + 11 + FNCT_BASE
+F_M_IC_CLOSE    equ     (SC_EVENT * 256) + 12 + FNCT_BASE
+F_SWAP          equ     (SC_EVENT * 256) + 13 + FNCT_BASE
+F_M_EXEC        equ     (SC_EVENT * 256) + 14 + FNCT_BASE
+F_M_DOS_CLOSE   equ     (SC_EVENT * 256) + 15 + FNCT_BASE
+
+
+;/*SC_MENU */
+
+F_MENU_SETUP    equ     (SC_MENU * 256) + 0 + FNCT_BASE
+F_MENU_DIS      equ     (SC_MENU * 256) + 1 + FNCT_BASE
+F_MENU_ON       equ     (SC_MENU * 256) + 2 + FNCT_BASE
+F_MENU_OFF      equ     (SC_MENU * 256) + 3 + FNCT_BASE
+F_MENU_KEY      equ     (SC_MENU * 256) + 4 + FNCT_BASE
+F_FMENU_INIT    equ     (SC_MENU * 256) + 5 + FNCT_BASE
+F_FMENU_DIS     equ     (SC_MENU * 256) + 6 + FNCT_BASE
+F_FMENU_KEY     equ     (SC_MENU * 256) + 7 + FNCT_BASE
+F_FMENU_OFF     equ     (SC_MENU * 256) + 8 + FNCT_BASE
+
+
+;/*SC_SCREEN*/
+
+F_M_DISP        equ     (SC_SCREEN * 256) + 0 + FNCT_BASE
+F_M_CLEAR       equ     (SC_SCREEN * 256) + 1 + FNCT_BASE
+F_M_SCROLL      equ     (SC_SCREEN * 256) + 2 + FNCT_BASE
+F_M_XCHG        equ     (SC_SCREEN * 256) + 3 + FNCT_BASE
+F_M_CHRATTR     equ     (SC_SCREEN * 256) + 4 + FNCT_BASE
+F_M_CHRRVRT     equ     (SC_SCREEN * 256) + 5 + FNCT_BASE
+; (SC_SCREEN * 256) + 6 is reserved
+F_M_CHRINV      equ     (SC_SCREEN * 256) + 7 + FNCT_BASE
+F_M_ROWS_COLS   equ     (SC_SCREEN * 256) + 8 + FNCT_BASE
+F_M_SETMODE     equ     (SC_SCREEN * 256) + 9 + FNCT_BASE
+F_M_GETMODE     equ     (SC_SCREEN * 256) +10 + FNCT_BASE
+F_M_SETCUR      equ     (SC_SCREEN * 256) +11 + FNCT_BASE
+F_M_SET_VIDEO_MODE equ  (SC_SCREEN * 256) +12 + FNCT_BASE
+
+;/*SC_EDIT*/
+
+F_EDIT_INIT     equ     (SC_EDIT * 256) + 0 + FNCT_BASE
+F_EDIT_TOP      equ     (SC_EDIT * 256) + 1 + FNCT_BASE
+F_EDIT_DIS      equ     (SC_EDIT * 256) + 2 + FNCT_BASE
+F_EDIT_KEY      equ     (SC_EDIT * 256) + 3 + FNCT_BASE
+F_MDIT_INI      equ     (SC_EDIT * 256) + 4 + FNCT_BASE
+F_MDIT_DIS      equ     (SC_EDIT * 256) + 5 + FNCT_BASE
+F_MDIT_KEY      equ     (SC_EDIT * 256) + 6 + FNCT_BASE
+F_MDIT_FIL      equ     (SC_EDIT * 256) + 7 + FNCT_BASE
+F_MDIT_MARK     equ     (SC_EDIT * 256) + 8 + FNCT_BASE
+F_MDIT_UNMARK   equ     (SC_EDIT * 256) + 9 + FNCT_BASE
+F_MDIT_CUTMARK  equ     (SC_EDIT * 256) + 10 + FNCT_BASE
+F_MDIT_INS_STR  equ     (SC_EDIT * 256) + 11 + FNCT_BASE
+
+;/*SC_FILE*/
+
+F_M_OPEN        equ     (SC_FILE * 256) + 0 + FNCT_BASE
+F_M_OPENRO      equ     (SC_FILE * 256) + 1 + FNCT_BASE
+F_M_CREATE      equ     (SC_FILE * 256) + 2 + FNCT_BASE
+F_M_FCREAT      equ     (SC_FILE * 256) + 3 + FNCT_BASE
+F_M_READ        equ     (SC_FILE * 256) + 4 + FNCT_BASE
+F_M_WRITE       equ     (SC_FILE * 256) + 5 + FNCT_BASE
+F_M_SEEK        equ     (SC_FILE * 256) + 6 + FNCT_BASE
+F_M_TELL        equ     (SC_FILE * 256) + 7 + FNCT_BASE
+F_M_CLOSE       equ     (SC_FILE * 256) + 8 + FNCT_BASE
+F_M_SETPAT      equ     (SC_FILE * 256) + 9 + FNCT_BASE
+F_M_MATCH       equ     (SC_FILE * 256) + 10 + FNCT_BASE
+F_M_IDENT       equ     (SC_FILE * 256) + 11 + FNCT_BASE
+F_M_DELETE      equ     (SC_FILE * 256) + 12 + FNCT_BASE
+F_M_RENAME      equ     (SC_FILE * 256) + 13 + FNCT_BASE
+F_M_GETDIR      equ     (SC_FILE * 256) + 14 + FNCT_BASE
+F_M_SETDIR      equ     (SC_FILE * 256) + 15 + FNCT_BASE
+F_M_VOLUME      equ     (SC_FILE * 256) + 16 + FNCT_BASE
+F_M_MKDIR       equ     (SC_FILE * 256) + 17 + FNCT_BASE
+F_M_RMDIR       equ     (SC_FILE * 256) + 18 + FNCT_BASE
+F_M_GETDRV      equ     (SC_FILE * 256) + 19 + FNCT_BASE
+F_M_SETDRV      equ     (SC_FILE * 256) + 20 + FNCT_BASE
+F_M_FDATE       equ     (SC_FILE * 256) + 21 + FNCT_BASE
+F_M_GET_SYSDIR  equ     (SC_FILE * 256) + 22 + FNCT_BASE
+F_M_GETATTR     equ     (SC_FILE * 256) + 23 + FNCT_BASE
+F_M_SETATTR     equ     (SC_FILE * 256) + 24 + FNCT_BASE
+F_M_COMMON_OPEN equ     (SC_FILE * 256) + 25 + FNCT_BASE
+F_M_COPYDT      equ     (SC_FILE * 256) + 26 + FNCT_BASE
+F_M_GETFDT      equ     (SC_FILE * 256) + 27 + FNCT_BASE
+F_M_PUTFDT      equ     (SC_FILE * 256) + 28 + FNCT_BASE
+F_M_CARD_CHANGES equ	(SC_FILE * 256) + 29 + FNCT_BASE
+F_M_FLUSH	equ	(SC_FILE * 256) + 30 + FNCT_BASE
+F_M_GET_DRIVE_LIST equ	(SC_FILE * 256) + 31 + FNCT_BASE
+F_M_RESET_DOS_ERROR equ (SC_FILE * 256) + 32 + FNCT_BASE
+
+
+;/*SC_PM*/
+
+F_M_INIT        equ     (SC_PM * 256) + 0 + FNCT_BASE
+F_M_FINI        equ     (SC_PM * 256) + 1 + FNCT_BASE
+F_M_LOCK        equ     (SC_PM * 256) + 2 + FNCT_BASE
+F_M_UNLOCK      equ     (SC_PM * 256) + 3 + FNCT_BASE
+F_M_SPAWN       equ     (SC_PM * 256) + 4 + FNCT_BASE
+F_M_APPCOUNT    equ     (SC_PM * 256) + 5 + FNCT_BASE
+F_M_REBOOT      equ     (SC_PM * 256) + 6 + FNCT_BASE
+F_M_SPAWNARG    equ     (SC_PM * 256) + 7 + FNCT_BASE
+F_M_REG_APP_NAME equ    (SC_PM * 256) + 8 + FNCT_BASE
+F_M_APP_NAME	equ	(SC_PM * 256) + 9 + FNCT_BASE
+F_M_INIT_APP	equ	(SC_PM * 256) + 10 + FNCT_BASE
+F_M_KEYLOCK     equ     (SC_PM * 256) + 11 + FNCT_BASE
+F_M_KEYUNLOCK   equ     (SC_PM * 256) + 12 + FNCT_BASE
+
+
+;/*SC_CB*/
+
+F_M_OPEN_CB     equ     (SC_CB * 256) + 0 + FNCT_BASE
+F_M_CLOSE_CB    equ     (SC_CB * 256) + 1 + FNCT_BASE
+F_M_RESET_CB    equ     (SC_CB * 256) + 2 + FNCT_BASE
+; (SC_CB * 256) + 3 is reserved
+F_M_NEW_REP     equ     (SC_CB * 256) + 4 + FNCT_BASE
+F_M_FINI_REP    equ     (SC_CB * 256) + 5 + FNCT_BASE
+F_M_REP_NAME    equ     (SC_CB * 256) + 6 + FNCT_BASE
+F_M_REP_INDEX   equ     (SC_CB * 256) + 7 + FNCT_BASE
+F_M_CB_WRITE    equ     (SC_CB * 256) + 8 + FNCT_BASE
+F_M_CB_READ     equ     (SC_CB * 256) + 9 + FNCT_BASE
+F_M_CB_INIT     equ     (SC_CB * 256) + 10 + FNCT_BASE
+
+;/*SC_SOUND*/
+
+F_M_BEEP        equ     (SC_SOUND * 256) + 0 + FNCT_BASE
+F_M_THUD        equ     (SC_SOUND * 256) + 1 + FNCT_BASE
+F_M_ASOUND      equ     (SC_SOUND * 256) + 2 + FNCT_BASE
+F_M_SOUNDOFF    equ     (SC_SOUND * 256) + 3 + FNCT_BASE
+F_M_PLAY        equ     (SC_SOUND * 256) + 4 + FNCT_BASE
+
+;/*SC_MM*/
+
+F_M_RALLOC      equ     (SC_MM * 256) + 0 + FNCT_BASE
+; (SC_MM * 256) + 1 is reserved
+F_M_FREE        equ     (SC_MM * 256) + 2 + FNCT_BASE
+F_M_ALLOC_LARGE equ     (SC_MM * 256) + 3 + FNCT_BASE
+F_M_FREE_LARGE  equ     (SC_MM * 256) + 4 + FNCT_BASE
+F_M_GET_BLOCK   equ     (SC_MM * 256) + 5 + FNCT_BASE
+F_M_SET_BLOCK   equ     (SC_MM * 256) + 6 + FNCT_BASE
+F_M_REG_BLOCK   equ     (SC_MM * 256) + 7 + FNCT_BASE
+F_M_GET_FAR_BLOCK equ   (SC_MM * 256) + 8 + FNCT_BASE
+F_M_SET_FAR_BLOCK equ   (SC_MM * 256) + 9 + FNCT_BASE
+F_M_REG_FAR_BLOCK equ   (SC_MM * 256) + 10 + FNCT_BASE
+
+F_M_GET_AVAIL_MEM equ   (SC_MM * 256) + 11 + FNCT_BASE
+F_M_GET_TCB       equ   (SC_MM * 256) + 12 + FNCT_BASE
+F_M_GET_FAR_HANDLE equ  (SC_MM * 256) + 13 + FNCT_BASE
+F_M_MODIFY_HOT_KEY equ	(SC_MM * 256) + 14 + FNCT_BASE
+F_M_TASK_INFO   equ     (SC_MM * 256) + 15 + FNCT_BASE
+F_M_CURRENT_TASK  equ	(SC_MM * 256) + 16 + FNCT_BASE
+F_M_QUICK_KEY_CHECK	 equ  (SC_MM * 256) + 17 + FNCT_BASE
+
+F_M_GET_AVAIL_STATIC_MEM equ  (SC_MM * 256) + 18 + FNCT_BASE
+F_M_GET_STATIC_BLOCK	 equ  (SC_MM * 256) + 19 + FNCT_BASE
+F_M_FREE_STATIC_BLOCK	 equ  (SC_MM * 256) + 20 + FNCT_BASE
+F_M_GET_SERVICE_ENTRY	 equ  (SC_MM * 256) + 21 + FNCT_BASE
+F_M_FREE_SERVICE_ENTRY	 equ  (SC_MM * 256) + 22 + FNCT_BASE
+F_M_LOAD_TSR		 equ  (SC_MM * 256) + 23 + FNCT_BASE
+F_M_FIND_SERVICE_ENTRY	 equ  (SC_MM * 256) + 24 + FNCT_BASE
+
+
+F_M_GET_STATIC_SIZE	 equ  (SC_MM * 256) + 25 + FNCT_BASE
+F_M_SET_STATIC_SIZE	 equ  (SC_MM * 256) + 26 + FNCT_BASE
+F_M_GET_STATIC_USED	 equ  (SC_MM * 256) + 27 + FNCT_BASE
+F_M_GET_DOS_PART_SIZE	 equ  (SC_MM * 256) + 28 + FNCT_BASE
+F_M_SET_DOS_PART_SIZE	 equ  (SC_MM * 256) + 29 + FNCT_BASE
+F_M_GET_ACT_DOS_SIZE	 equ  (SC_MM * 256) + 30 + FNCT_BASE
+
+F_M_GET_DOS_HOT_KEY	 equ  (SC_MM * 256) + 31 + FNCT_BASE
+F_M_SET_DOS_HOT_KEY	 equ  (SC_MM * 256) + 32 + FNCT_BASE
+F_M_GET_AVAIL_123_MEM	 equ  (SC_MM * 256) + 33 + FNCT_BASE
+F_M_LOCK_OUT_APP_KEY	 equ  (SC_MM * 256) + 34 + FNCT_BASE
+F_M_ENABLE_APP_KEY	 equ  (SC_MM * 256) + 35 + FNCT_BASE
+F_M_GET_FAR_USER_HANDLE  equ  (SC_MM * 256) + 36 + FNCT_BASE
+F_M_GET_AVAIL_INIT_MEM	 equ  (SC_MM * 256) + 37 + FNCT_BASE
+F_M_LOAD_CLIENT		 equ  (SC_MM * 256) + 38 + FNCT_BASE
+F_M_UNLOAD_CLIENT	 equ  (SC_MM * 256) + 39 + FNCT_BASE
+
+
+; Task info specific equates
+
+TI_TASK_HOT_KEY         equ     0
+TI_TASK_STATE           equ     1  
+TI_TASK_EXTNAME         equ     2
+TI_TASK_SP_STATE        equ     3
+TI_TASK_SP_LINK         equ     4
+
+;/*SC_BG*/
+
+
+;/*SC_DTIME*/
+
+F_M_DTINFO      equ     (SC_DTIME * 256) + 0 + FNCT_BASE
+F_M_GETDTM      equ     (SC_DTIME * 256) + 1 + FNCT_BASE
+F_M_SETDTM      equ     (SC_DTIME * 256) + 2 + FNCT_BASE
+F_M_XALARM      equ     (SC_DTIME * 256) + 3 + FNCT_BASE
+F_M_ALARM       equ     (SC_DTIME * 256) + 4 + FNCT_BASE
+F_M_START_SW    equ     (SC_DTIME * 256) + 5 + FNCT_BASE
+F_M_GET_SW      equ     (SC_DTIME * 256) + 6 + FNCT_BASE
+F_M_STOP_SW     equ     (SC_DTIME * 256) + 7 + FNCT_BASE
+F_M_TELLTIME    equ     (SC_DTIME * 256) + 8 + FNCT_BASE
+F_M_GET_SETTINGS equ    (SC_DTIME * 256) + 9 + FNCT_BASE
+F_M_SET_SETTINGS equ    (SC_DTIME * 256) +10 + FNCT_BASE
+F_M_START_TIMER equ     (SC_DTIME * 256) +11 + FNCT_BASE
+F_M_STOP_TIMER  equ     (SC_DTIME * 256) +12 + FNCT_BASE
+F_M_GET_TIMER   equ     (SC_DTIME * 256) +13 + FNCT_BASE
+F_M_TELL_ANYTIME equ    (SC_DTIME * 256) +14 + FNCT_BASE
+F_M_GET_SETTINGS_ADDR equ       (SC_DTIME * 256) + 15 + FNCT_BASE
+F_M_PARSE_DATE  equ     (SC_DTIME * 256) + 16 + FNCT_BASE
+F_M_PARSE_TIME  equ     (SC_DTIME * 256) + 17 + FNCT_BASE
+F_M_SET_DATERULE equ    (SC_DTIME * 256) + 18 + FNCT_BASE
+F_M_SET_TIMERULE equ    (SC_DTIME * 256) + 19 + FNCT_BASE
+F_M_POST_TIME equ       (SC_DTIME * 256) + 20 + FNCT_BASE
+F_M_DAY_TRIGGER equ     (SC_DTIME * 256) + 21 + FNCT_BASE
+F_M_NALARM	equ	(SC_DTIME * 256) + 22 + FNCT_BASE
+F_M_NFALARM	equ	(SC_DTIME * 256) + 23 + FNCT_BASE
+F_M_KEYBEZ	EQU	(SC_DTIME * 256) + 24 + FNCT_BASE
+
+
+;/*SC_PRINT*/
+
+F_M_OPEN_PRINTER equ    (SC_PRINT * 256) + 0 + FNCT_BASE
+F_M_CLOSE_PRINTER equ   (SC_PRINT * 256) + 1 + FNCT_BASE
+F_M_WRITE_PRINTER equ   (SC_PRINT * 256) + 2 + FNCT_BASE
+F_M_INIT_PRINTER  equ   (SC_PRINT * 256) + 3 + FNCT_BASE
+F_M_TRANS_PRINTER equ   (SC_PRINT * 256) + 4 + FNCT_BASE
+F_M_FALL_PRINTER  equ   (SC_PRINT * 256) + 5 + FNCT_BASE
+F_M_WRITE_PRINTER_ATB equ (SC_PRINT * 256) + 6 + FNCT_BASE
+F_M_TRANS_PRINTER_ATB equ (SC_PRINT * 256) + 7 + FNCT_BASE
+F_M_PRINT_SCRN    equ (SC_PRINT * 256) + 8 + FNCT_BASE
+
+
+;/*SC_CONFIG*/
+
+
+
+;/*SC_COMM*/
+
+F_COMM_INIT     equ     (SC_COMM * 256) + 0 + FNCT_BASE
+F_COMM_OPEN     equ     (SC_COMM * 256) + 1 + FNCT_BASE
+F_COMM_CLOSE    equ     (SC_COMM * 256) + 2 + FNCT_BASE
+F_COMM_GETMDM   equ     (SC_COMM * 256) + 3 + FNCT_BASE
+F_COMM_ANSWER   equ     (SC_COMM * 256) + 4 + FNCT_BASE
+F_COMM_DIAL     equ     (SC_COMM * 256) + 5 + FNCT_BASE
+F_COMM_RESET    equ     (SC_COMM * 256) + 6 + FNCT_BASE
+F_COMM_HANGUP   equ     (SC_COMM * 256) + 7 + FNCT_BASE
+F_COMM_SNDBTS   equ     (SC_COMM * 256) + 8 + FNCT_BASE
+F_COMM_QRYTXQ   equ     (SC_COMM * 256) + 9 + FNCT_BASE
+F_COMM_QRYRXQ   equ     (SC_COMM * 256) + 10 + FNCT_BASE
+F_COMM_RCVBTS   equ     (SC_COMM * 256) + 11 + FNCT_BASE
+F_COMM_HAZCMD   equ     (SC_COMM * 256) + 12 + FNCT_BASE
+F_COMM_COMAND   equ     (SC_COMM * 256) + 13 + FNCT_BASE
+F_COMM_BREAK    equ     (SC_COMM * 256) + 14 + FNCT_BASE
+F_COMM_FRCXON   equ     (SC_COMM * 256) + 15 + FNCT_BASE
+F_COMM_FRCXOF   equ     (SC_COMM * 256) + 16 + FNCT_BASE
+F_COMM_SETDTR   equ     (SC_COMM * 256) + 17 + FNCT_BASE
+F_COMM_XMITNG   equ     (SC_COMM * 256) + 18 + FNCT_BASE
+F_COMM_STATUS   equ     (SC_COMM * 256) + 19 + FNCT_BASE
+F_COMM_SET      equ     (SC_COMM * 256) + 20 + FNCT_BASE
+F_COMM_GET      equ     (SC_COMM * 256) + 21 + FNCT_BASE
+F_COMM_CNFGUR   equ     (SC_COMM * 256) + 22 + FNCT_BASE
+F_COMM_QRYERR   equ     (SC_COMM * 256) + 23 + FNCT_BASE
+F_COMM_ACQUIRE  equ     (SC_COMM * 256) + 24 + FNCT_BASE
+F_COMM_RELEASE  equ     (SC_COMM * 256) + 25 + FNCT_BASE
+F_COMM_GETPARM  equ     (SC_COMM * 256) + 26 + FNCT_BASE
+F_COMM_SETPARM  equ     (SC_COMM * 256) + 27 + FNCT_BASE
+F_COMM_MDMCLR   equ     (SC_COMM * 256) + 28 + FNCT_BASE
+F_COMM_MDMSET   equ     (SC_COMM * 256) + 29 + FNCT_BASE
+F_COMM_MDMSTAT  equ     (SC_COMM * 256) + 30 + FNCT_BASE
+F_COMM_ACQRCV   equ     (SC_COMM * 256) + 31 + FNCT_BASE
+F_COMM_ACQSEND  equ     (SC_COMM * 256) + 32 + FNCT_BASE
+F_COMM_POWER    equ     (SC_COMM * 256) + 33 + FNCT_BASE
+;RESERVED       equ     (SC_COMM * 256) + 34 + FNCT_BASE
+
+;/*SC_MISC*/
+
+F_M_ERRMSG              equ     (SC_MISC * 256) + 0 + FNCT_BASE
+F_DRAWBOX               equ     (SC_MISC * 256) + 1 + FNCT_BASE
+F_SHOWNAME              equ     (SC_MISC * 256) + 2 + FNCT_BASE
+F_MESSAGE               equ     (SC_MISC * 256) + 3 + FNCT_BASE
+F_MSG_OFF               equ     (SC_MISC * 256) + 4 + FNCT_BASE
+F_M_COM_TIMER_ADDR      equ     (SC_MISC * 256) + 5 + FNCT_BASE
+F_M_COM_TIMER_COUNT_ADDR equ    (SC_MISC * 256) + 6 + FNCT_BASE
+F_M_SYS_RSRC_ADDR       equ     (SC_MISC * 256) + 7 + FNCT_BASE
+F_M_BIOS_OUTSTR         equ     (SC_MISC * 256) + 8 + FNCT_BASE
+F_M_MESSAGE3            equ     (SC_MISC * 256) + 9 + FNCT_BASE
+F_M_DISABLE_MACROS      equ     (SC_MISC * 256) + 10 + FNCT_BASE
+F_M_ENABLE_MACROS       equ     (SC_MISC * 256) + 11 + FNCT_BASE
+F_M_DATE_TIME_SEPS      equ     (SC_MISC * 256) + 12 + FNCT_BASE
+F_M_FORM_FT             equ     (SC_MISC * 256) + 13 + FNCT_BASE
+F_M_RAM_IV_INFO         equ     (SC_MISC * 256) + 14 + FNCT_BASE
+F_M_GET_SYSVER          equ     (SC_MISC * 256) + 15 + FNCT_BASE
+F_M_START_RECORD        equ     (SC_MISC * 256) + 16 + FNCT_BASE
+F_M_STOP_RECORD         equ     (SC_MISC * 256) + 17 + FNCT_BASE
+F_M_UPDATE_APNAMES	equ	(SC_MISC * 256) + 18 + FNCT_BASE
+F_M_GET_TCB_SIZE	equ	(SC_MISC * 256) + 19 + FNCT_BASE
+F_M_PLAYBACK_MACRO	equ	(SC_MISC * 256) + 20 + FNCT_BASE
+
+;/*SC_VIDVIR*/
+F_M_DIRTY_SYNC          equ     (SC_VIDVIR * 256) + 5 + FNCT_BASE
+
+
+;/*SC_VIDPHY*/
+
+
+
+;/*SC_RSRC*/
+
+F_MAP_RESOURCE_FILE     equ     (SC_RSRC * 256) + 0 + FNCT_BASE
+F_GET_RESOURCE_PTR      equ     (SC_RSRC * 256) + 1 + FNCT_BASE
+F_GET_RSRC_TAB_PTR      equ     (SC_RSRC * 256) + 2 + FNCT_BASE
+F_INIT_SYSGMR_RSRCS     equ     (SC_RSRC * 256) + 3 + FNCT_BASE
+F_M_INIT_KEYLABELS      equ     (SC_RSRC * 256) + 4 + FNCT_BASE
+F_M_GET_SCANCODE        equ     (SC_RSRC * 256) + 5 + FNCT_BASE
+F_M_GET_KEYLABEL        equ     (SC_RSRC * 256) + 6 + FNCT_BASE
+
+
+;/*SC_HELP*/
+
+F_M_HELP_INIT           equ     (SC_HELP * 256) + 0 + FNCT_BASE
+F_M_HELP_DISPLAY        equ     (SC_HELP * 256) + 1 + FNCT_BASE
+F_M_HELP_KEY            equ     (SC_HELP * 256) + 2 + FNCT_BASE
+F_M_HELP_TERM           equ     (SC_HELP * 256) + 3 + FNCT_BASE
+F_M_HELP2_INIT          equ     (SC_HELP * 256) + 4 + FNCT_BASE
+F_M_HELP2_DISPLAY       equ     (SC_HELP * 256) + 5 + FNCT_BASE
+F_M_HELP2_KEY           equ     (SC_HELP * 256) + 6 + FNCT_BASE
+F_M_HELP2_TERM          equ     (SC_HELP * 256) + 7 + FNCT_BASE
+F_M_HELP2_GETMETRICS    equ     (SC_HELP * 256) + 8 + FNCT_BASE
+
+;/*SC_COL*/
+
+F_M_ColInit             equ     (SC_COL * 256) + 0 + FNCT_BASE
+F_M_ColCpStr            equ     (SC_COL * 256) + 1 + FNCT_BASE
+F_M_ColLicsStr          equ     (SC_COL * 256) + 2 + FNCT_BASE
+F_M_ColLicsChar         equ     (SC_COL * 256) + 3 + FNCT_BASE
+F_M_ColToLower          equ     (SC_COL * 256) + 4 + FNCT_BASE
+F_M_ColCpSearch         equ     (SC_COL * 256) + 5 + FNCT_BASE
+F_M_ColToUpper          equ     (SC_COL * 256) + 6 + FNCT_BASE
+
+; SC_GRDISP
+
+F_GrDispInit            equ     (SC_GRDISP * 256) + 0 + FNCT_BASE
+F_GrDispClear           equ     (SC_GRDISP * 256) + 1 + FNCT_BASE
+F_GrDispDot             equ     (SC_GRDISP * 256) + 2 + FNCT_BASE
+F_GrDispDraw            equ     (SC_GRDISP * 256) + 3 + FNCT_BASE
+F_GrDispFill            equ     (SC_GRDISP * 256) + 4 + FNCT_BASE
+F_GrDispRead            equ     (SC_GRDISP * 256) + 5 + FNCT_BASE
+F_GrDispString          equ     (SC_GRDISP * 256) + 6 + FNCT_BASE
+F_GrDispPan             equ     (SC_GRDISP * 256) + 7 + FNCT_BASE
+F_GrDispZoom            equ     (SC_GRDISP * 256) + 8 + FNCT_BASE
+F_GrDispSave            equ     (SC_GRDISP * 256) + 9 + FNCT_BASE
+F_GrDispRestore         equ     (SC_GRDISP * 256) + 10 + FNCT_BASE
+F_GrDispCorner          equ     (SC_GRDISP * 256) + 11 + FNCT_BASE
+
+; SC_KEY
+
+F_CP_TO_LICS		equ	(SC_KEY * 256) + 4 + FNCT_BASE
+
+
+ifdef XBS
+include XBS_inter.mac
+endif
+
+

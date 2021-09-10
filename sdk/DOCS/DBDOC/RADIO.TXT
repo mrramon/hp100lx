@@ -1,0 +1,397 @@
+Here is  second document of the 100LX database file format. This is a 
+dump of a very simple database, with very brief explanations of what 
+some of the more important pieces are.  You will need the first document 
+titled "Format of the 100LX database files" to read along with this.  
+Using that document, you should be able to pick apart the contents of 
+the individual records.
+
+o
+ \/__________________________________________________________________________
+ /\
+o
+Dump of Database file radio.gdb
+
+=====================================================
+SIGNATURE>>
+000000: 68 63 44 00                                         hcD.
+
+=====================================================
+HEADER>>
+000004: 00 00 19 00 00 00 02 01 44 00 00 00 23 00 b9 02     ........D...#...
+000014: 00 00 5d 03 14 2c 00 c8 7b                          ..]..,..{
+
+RECORD HEADER>>
+  Type: 0 (TYPE_DBHEADER)   Status: 00    Length: 25 (0019)   Record #: 0
+  Status =
+
+  Release number:102   File type:'D'  File status:00
+  ************ General Database/Phone Book File ************
+  Current viewpt:0   Number records:35   Lookup seek address:0002b9
+  Last reconciled on: 4/21/93  0:44
+  Magic Viewpt Sort Key:0x7bc8
+
+=====================================================
+RECORD HEADER>>
+00001d: 05 02 07 00 00 00                                   ......
+
+  Type: 5 (TYPE_CATEGORY)   Status: 02    Length: 7 (0007)   Record #: 0
+  Status = Modified
+
+RECORD>>
+000023: 00                                                  .
+
+=====================================================
+RECORD HEADER>>
+000024: 04 02 1a 00 00 00                                   ......
+
+  Type: 4 (TYPE_CARDDEF)   Status: 02    Length: 26 (001a)   Record #: 0
+  Status = Modified
+
+RECORD>>
+00002a: 01 00 00 00 02 00 0d 00 fe 00 0f 00 1f 00 01 00     ................
+00003a: 00 00 ff ff                                         ..ÿÿ
+
+=====================================================
+RECORD HEADER>>
+00003e: 06 02 12 00 00 00                                   ......
+
+  Type: 6 (TYPE_FIELDDEF)   Status: 02    Length: 18 (0012)   Record #: 0
+  Status = Modified
+
+RECORD>>
+000044: 02 00 00 00 20 00 00 6e 61 6d 65 00                 .... ..name.
+
+=====================================================
+RECORD HEADER>>
+000050: 07 02 62 00 00 00                                   ..b...
+
+  Type: 7 (TYPE_VIEWPTDEF)   Status: 02    Length: 98 (0062)   Record #: 0
+  Status = Modified
+
+RECORD>>
+000056: 00 00 00 00 02 00 00 41 6c 6c 20 44 61 74 61 62     .......All Datab
+000066: 61 73 65 20 49 74 65 6d 73 00 00 00 00 00 00 00     ase Items.......
+000076: 00 00 00 00 00 00 00 00 00 ff ff ff ff 01 00 00     .........ÿÿÿÿ...
+000086: 00 00 00 00 20 ff 00 ff 00 00 00 00 00 00 00 00     .... ÿ.ÿ........
+000096: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ................
+0000a6: 00 00 00 00 00 00 00 00 00 00 00 00                 ............
+
+=====================================================
+RECORD HEADER>>
+0000b2: 0c 02 3d 00 00 00                                   ..=...
+
+  Type: 12 (TYPE_LINKDEF)   Status: 02    Length: 61 (003d)   Record #: 0
+  Status = Modified
+
+RECORD>>
+0000b8: 13 00 02 00 41 6c 6c 20 46 69 65 6c 64 73 00 00     ....All Fields..
+0000c8: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ................
+0000d8: 00 00 00 00 6e 61 6d 65 3a 20 ff 0a 40 6f 00 06     ....name: ÿ.@o..
+0000e8: 00 00 01 09 ff 0d 0a                                ....ÿ..
+
+=====================================================
+RECORD HEADER>>
+0000ef: 0b 02 0f 00 00 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 0
+  Status = Modified
+
+RECORD>>
+0000f5: 03 00 00 41 6c 70 68 61 00                          ...Alpha.
+
+=====================================================
+RECORD HEADER>>
+0000fe: 0b 02 0f 00 01 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 1
+  Status = Modified
+
+RECORD>>
+000104: 03 00 00 42 72 61 76 6f 00                          ...Bravo.
+
+=====================================================
+RECORD HEADER>>
+00010d: 0b 02 11 00 02 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 17 (0011)   Record #: 2
+  Status = Modified
+
+RECORD>>
+000113: 03 00 00 43 68 61 72 6c 69 65 00                    ...Charlie.
+
+=====================================================
+RECORD HEADER>>
+00011e: 0b 02 0f 00 03 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 3
+  Status = Modified
+
+RECORD>>
+000124: 03 00 00 44 65 6c 74 61 00                          ...Delta.
+
+=====================================================
+RECORD HEADER>>
+00012d: 0b 02 0e 00 04 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 14 (000e)   Record #: 4
+  Status = Modified
+
+RECORD>>
+000133: 03 00 00 45 63 68 6f 00                             ...Echo.
+
+=====================================================
+RECORD HEADER>>
+00013b: 0b 02 11 00 05 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 17 (0011)   Record #: 5
+  Status = Modified
+
+RECORD>>
+000141: 03 00 00 46 6f 78 74 72 6f 74 00                    ...Foxtrot.
+
+=====================================================
+RECORD HEADER>>
+00014c: 0b 02 0f 00 06 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 6
+  Status = Modified
+
+RECORD>>
+000152: 03 00 00 47 65 63 6b 6f 00                          ...Gecko.
+
+=====================================================
+RECORD HEADER>>
+00015b: 0b 02 10 00 08 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 8
+  Status = Modified
+
+RECORD>>
+000161: 03 00 00 49 6e 64 69 67 6f 00                       ...Indigo.
+
+=====================================================
+RECORD HEADER>>
+00016b: 0b 02 10 00 09 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 9
+  Status = Modified
+
+RECORD>>
+000171: 03 00 00 4a 75 6c 69 65 74 00                       ...Juliet.
+
+=====================================================
+RECORD HEADER>>
+00017b: 0b 02 0f 00 0e 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 14
+  Status = Modified
+
+RECORD>>
+000181: 03 00 00 4f 70 65 72 61 00                          ...Opera.
+
+=====================================================
+RECORD HEADER>>
+00018a: 0b 02 0f 00 11 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 17
+  Status = Modified
+
+RECORD>>
+000190: 03 00 00 52 6f 6d 65 6f 00                          ...Romeo.
+
+=====================================================
+RECORD HEADER>>
+000199: 0b 02 0f 00 13 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 19
+  Status = Modified
+
+RECORD>>
+00019f: 03 00 00 54 61 6e 67 6f 00                          ...Tango.
+
+=====================================================
+RECORD HEADER>>
+0001a8: 0b 02 0f 00 17 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 23
+  Status = Modified
+
+RECORD>>
+0001ae: 03 00 00 58 2d 52 61 79 00                          ...X-Ray.
+
+=====================================================
+RECORD HEADER>>
+0001b7: 0b 02 0f 00 19 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 25
+  Status = Modified
+
+RECORD>>
+0001bd: 03 00 00 5a 65 62 72 61 00                          ...Zebra.
+
+=====================================================
+RECORD HEADER>>
+0001c6: 0b 02 10 00 18 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 24
+  Status = Modified
+
+RECORD>>
+0001cc: 03 00 00 59 61 6e 6b 65 65 00                       ...Yankee.
+
+=====================================================
+RECORD HEADER>>
+0001d6: 0b 02 10 00 15 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 21
+  Status = Modified
+
+RECORD>>
+0001dc: 03 00 00 56 69 63 74 6f 72 00                       ...Victor.
+
+=====================================================
+RECORD HEADER>>
+0001e6: 0b 02 11 00 16 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 17 (0011)   Record #: 22
+  Status = Modified
+
+RECORD>>
+0001ec: 03 00 00 57 68 69 73 6b 65 79 00                    ...Whiskey.
+
+=====================================================
+RECORD HEADER>>
+0001f7: 0b 02 0f 00 07 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 7
+  Status = Modified
+
+RECORD>>
+0001fd: 03 00 00 48 6f 74 65 6c 00                          ...Hotel.
+
+=====================================================
+RECORD HEADER>>
+000206: 0b 02 0e 00 0a 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 14 (000e)   Record #: 10
+  Status = Modified
+
+RECORD>>
+00020c: 03 00 00 4b 69 6c 6f 00                             ...Kilo.
+
+=====================================================
+RECORD HEADER>>
+000214: 0b 02 0e 00 0b 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 14 (000e)   Record #: 11
+  Status = Modified
+
+RECORD>>
+00021a: 03 00 00 4c 69 6d 61 00                             ...Lima.
+
+=====================================================
+RECORD HEADER>>
+000222: 0b 02 10 00 0c 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 12
+  Status = Modified
+
+RECORD>>
+000228: 03 00 00 4d 65 78 69 63 6f 00                       ...Mexico.
+
+=====================================================
+RECORD HEADER>>
+000232: 0b 02 0f 00 0d 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 15 (000f)   Record #: 13
+  Status = Modified
+
+RECORD>>
+000238: 03 00 00 4e 61 6e 63 79 00                          ...Nancy.
+
+=====================================================
+RECORD HEADER>>
+000241: 0b 02 0e 00 0f 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 14 (000e)   Record #: 15
+  Status = Modified
+
+RECORD>>
+000247: 03 00 00 50 61 70 61 00                             ...Papa.
+
+=====================================================
+RECORD HEADER>>
+00024f: 0b 02 10 00 10 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 16
+  Status = Modified
+
+RECORD>>
+000255: 03 00 00 51 75 65 62 65 63 00                       ...Quebec.
+
+=====================================================
+RECORD HEADER>>
+00025f: 0b 02 10 00 12 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 18
+  Status = Modified
+
+RECORD>>
+000265: 03 00 00 53 69 65 72 72 61 00                       ...Sierra.
+
+=====================================================
+RECORD HEADER>>
+00026f: 0b 02 10 00 14 00                                   ......
+
+  Type: 11 (TYPE_DATA)   Status: 02    Length: 16 (0010)   Record #: 20
+  Status = Modified
+
+RECORD>>
+000275: 03 00 00 55 6e 69 74 65 64 00                       ...United.
+
+=====================================================
+RECORD HEADER>>
+00027f: 0a 02 3a 00 00 00                                   ..:...
+
+  Type: 10 (TYPE_VIEWPTTABLE)   Status: 02    Length: 58 (003a)   Record #: 0
+  Status = Modified
+
+RECORD>>
+000285: 00 00 01 00 02 00 03 00 04 00 05 00 06 00 07 00     ................
+000295: 08 00 09 00 0a 00 0b 00 0c 00 0d 00 0e 00 0f 00     ................
+0002a5: 10 00 11 00 12 00 13 00 14 00 15 00 16 00 17 00     ................
+0002b5: 18 00 19 00                                         ....
+
+=====================================================
+RECORD HEADER>>
+0002b9: 1f 00 1e 01 00 00                                   ......
+
+  Type: 31 (TYPE_LOOKUPTABLE)   Status: 00    Length: 286 (011e)   Record #: 0
+  Status =
+
+RECORD>>
+0002bf: 19 00 ff ff 00 04 00 00 1a 00 fe ff 00 24 00 00     ..ÿÿ.......ÿ....
+0002cf: 07 00 fe ff 00 1d 00 00 12 00 fe ff 00 3e 00 00     ...ÿ.......ÿ....
+0002df: 00 00 fe ff c0 00 00 00 00 00 fe ff c0 00 00 00     ...ÿ.......ÿÀ...
+0002ef: 62 00 fe ff 00 50 00 00 3a 00 fe ff 00 7f 02 00     b..ÿ....:..ÿ....
+0002ff: 0f 00 fe ff 00 ef 00 00 0f 00 fe ff 00 fe 00 00     ...ÿ.......ÿ....
+00030f: 11 00 fe ff 00 0d 01 00 0f 00 fe ff 00 1e 01 00     ...ÿ.......ÿ....
+00031f: 0e 00 fe ff 00 2d 01 00 11 00 fe ff 00 3b 01 00     ...ÿ.......ÿ....
+00032f: 0f 00 fe ff 00 4c 01 00 0f 00 fe ff 00 f7 01 00     ...ÿ.......ÿ....
+00033f: 10 00 fe ff 00 5b 01 00 10 00 fe ff 00 6b 01 00     ...ÿ.......ÿ....
+00034f: 0e 00 fe ff 00 06 02 00 0e 00 fe ff 00 14 02 00     ...ÿ.......ÿ....
+00035f: 10 00 fe ff 00 22 02 00 0f 00 fe ff 00 32 02 00     ...ÿ.......ÿ....
+00036f: 0f 00 fe ff 00 7b 01 00 0e 00 fe ff 00 41 02 00     ...ÿ.......ÿ....
+00037f: 10 00 fe ff 00 4f 02 00 0f 00 fe ff 00 8a 01 00     ...ÿ.......ÿ....
+00038f: 10 00 fe ff 00 5f 02 00 0f 00 fe ff 00 99 01 00     ...ÿ.......ÿ....
+00039f: 10 00 fe ff 00 6f 02 00 10 00 fe ff 00 d6 01 00     ...ÿ.......ÿ....
+0003af: 11 00 fe ff 00 e6 01 00 0f 00 fe ff 00 a8 01 00     ...ÿ.......ÿ....
+0003bf: 10 00 fe ff 00 c6 01 00 0f 00 fe ff 00 b7 01 00     ...ÿ.......ÿ....
+0003cf: 3d 00 fe ff 00 b2 00 00                             =..ÿ....
+
+TYPE FIRST INFORMATION>>
+0003d7: 00 00 01 00 01 00 01 00 01 00 02 00 03 00 06 00     ................
+0003e7: 07 00 07 00 07 00 08 00 22 00 23 00 23 00 23 00     ........".#.#.#.
+0003f7: 23 00 23 00 23 00 23 00 23 00 23 00 23 00 23 00     #.#.#.#.#.#.#.#.
+000407: 23 00 23 00 23 00 23 00 23 00 23 00 23 00 23 00     #.#.#.#.#.#.#.#.
+

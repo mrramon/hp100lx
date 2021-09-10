@@ -1,0 +1,112 @@
+*******************
+  Dialog Designer
+*******************
+
+Dialog Designer is a program to help automate construction of dialog boxes
+for LHAPI.  DD itself is a LHAPI program, so you must have TKERNEL and
+CGAGRAPH loaded to run it. 
+
+If DD is run with a correct filename on the command line (it assumes an
+extension .RES if no extension is given), then that dialog is loaded, other-
+wise, a blank dialog template is loaded.  DD only keeps one dialog box in a
+file; this decision was made to make working with individual dialog boxes
+easier.
+
+After the program is loaded with the appropriate dialog, the following
+keys are available:
+
+Tab/Backtab -- Moves the window selection forward/backward.  This is
+  used to select a window to edit or delete.  Since it will traverse the
+  windows in the same order as the real dialog, it can be used to "test"
+  the dialog traversal order.
+
+F1 = Save -- Saves the current dialog.  First asks for a filename;
+  pressing Return will save to the current filename.  Entering any other
+  name will check to see if the file exists, and overwrite if prompted
+  to do so.  Note that saving the dialog saves two files; the .RES and
+  the .RC file.  The .RES file keeps the dialog information in a binary
+  format that DD can read, and the .RC file is the C language equivalent
+  that you #include into your source file.
+
+F2 = Open -- Presents a list of dialog resource files (.RES) to load.
+
+F3 = Header -- Enters Header information into the Dialog.  This consists
+  of:
+      Screen Title -- The title shown on the dialog's top line.  If it is
+          left blank, the entry defaults to NULL.
+      Code Name -- The name in your code file you wish to refer to the dialog.
+          Note: This name must be entered, and also must be a unique
+          identifier in your source code.  All messages, dialog boxes,
+          buffers, etc. created by the program use this name as a prefix
+          to be unique!
+      FKey Name -- Name of the FKey structure to be used by your dialog.
+          No entry defaults to NULL.
+      Card View -- If this is checked, the Dialog is created as a Card View.
+
+F4 = Position -- Allows you to position the dialog (using
+  up,down,left,right), and size it (using shift+up,down,left,right).
+  When ScrollLock is active, the dialog box coordinates move in coarser
+  increments.
+
+F5 = Add -- Adds a dialog element to the screen.  Most fields can be
+  left blank, and DD will create appropriate default values (except
+  Control Class and Title).  This allows you to control the level of
+  code produced by DD. If you want fast prototyping code, leave most of
+  the fields blank, and the appropriate resources and buffers will be
+  created.  If you fill most of the fields in, the resources and buffers
+  will only be accessed, assuming that they have been defined earlier in
+  your code.
+
+  The fields are:
+      Control Class: The class of window you are adding.  The Control Class
+          names are the same as described in CAP.H.  This field is required.
+          This controls the type of window that is created for display, and
+          by default, the window class that is output to the .RC file.
+      Control Name: Normally this field is left blank.  This field is used if
+          you have a window subclass.  If you have a window subclass, put
+          the subclass name here, and set the Control Class to the type of
+          window (so it will display properly).
+      Title: The title of the Control.  This field is used to display the
+          window title.
+      Resource:  If this field is filled, this title is for display *only*;
+          the actual title is derived from entered resource.  If Resource is
+          empty, a resource string is created that contains Title.
+      Buffer Name:  If filled, the window uses the specified
+          buffer, otherwise a buffer is created to hold the window's data.
+      Size: An integer (constant or #define).  If filled, this is used for
+          the Logical Size of the window (if Buffer Name has not been defined,
+          the buffer created will be to this size).  If it is not filled,
+          an appropriate value is used.  For Radio Buttons/Check boxes, a
+          unique ID value is used; for all other controls, the size will be
+          the width of the buffer on screen.
+      Style: The defines to set the appropriate style (eg.
+          STYLE_SAVEUNDER | DRAW_GRAY ).  If nothing is entered,
+          the field defaults to 0.
+      Fkey Name:  The name of the function key structure for this window.
+          The default is FKEY_PARENT.
+      Menu/List: The name of the Menu structure for this window.  The default
+          is MENU_PARENT.  For ComboBoxes, this field holds the list window's
+          address.
+
+  After the window is defined and F10 is pressed, the window can be placed
+  on the dialog.  Use up,down,left,right to move the window, and shift+
+  up,down,left,right to size.  Again, ScrollLock will move in jumps.
+  Press Enter or F10 to finish.
+
+F6 = Edit --  Allows you to edit the information associated with each
+  window.  The description of the fields is above.
+
+F7 = Delete --  Deletes the current window (shown with a inverse video
+  highlight).  The Tab/BackTab keys can be used to change the current
+  window.
+
+F8 = Move --   Allows you to move and size the current window using
+  up,down,left,right and shift+up,down,left,right.  ScrollLock functions
+  here too.
+
+F9 = Draw -- Redraws the screen.  Occasionally after moving, adding, or
+  deleting windows, there may be "clutter" on the screen.  Pressing F9
+  will refresh the screen.
+
+F10 = Quit -- Quits the program.  If the current dialog has been edited,
+  DD will prompt you to save your changes.

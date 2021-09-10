@@ -1,0 +1,320 @@
+!short:
+!short:^u Configuration file routines
+^u Configuration file routines
+
+The functions in this module allow easy retrieval of information
+from user-editable plain-text config files (in WIN.INI style).
+
+Sample for a config file (MYAPP.CFG)
+
+  ; -------------------------------------------
+  ; Configuration file for MYAPP
+  ; -------------------------------------------
+  ;
+  ; Comments are introduced with a semicolon
+  ;
+
+  [Printer]
+  Port = LPT1
+  Driver = LaserJet
+
+  [User]
+  Name   = 'John Doe'
+  Serial = 123456
+
+The name in angular brackets is called a section, the left side
+of an assignment name is called a key, and the right side is
+called a value.
+
+The routines in this module allow easy reading in and retrieval
+of the data in such a file. (In general, after loading the
+config file you provide a section and a key and get the
+corresponding value, or a default that you can specify)
+
+Use ReadConfig(), or ReadMyConfig() to load the
+config file, and GetConfigString() or GetConfigInt() to retrieve
+data. That's all you usually need.
+
+GetFirstEntry() and GetNextEntry() can be used to scan
+entire sections. GetCfgLine retrieves the line number (for error
+messages) during such a scan. Finally, call DiscardConfig() to
+free up the memory used by the config database.
+
+!short: ReadConfig           Read config file given full name
+   NAME
+      ReadConfig
+
+   DESCRIPTION
+      Reads a config file and stores the settings in an internal
+      database for later retrieval.
+
+   SYNOPSIS
+      #include "pal.h"
+      void  ReadConfig(char *CfgName);
+
+   INPUTS
+      CfgName - the name of the config file - including the
+                extension.
+
+   NOTE
+      ReadConfig has no return value - if the file is not found,
+      that is not considered an error, since your program may
+      still use the default value system supported by the
+      GetConfigXXX functions. If you need a mandatory entry in
+      the config file, you can detect its absence - see
+      GetConfigString for a tip how this can be done.
+
+   SAMPLE
+      void main(void)
+      {
+         ReadConfig("MYAPP.CFG"); /* Load config data for future use */
+         /* ... */
+      }
+!Seealso: GetConfigString ReadMyConfig DiscardConfig
+
+!short: ReadMyConfig         Read config, given program name
+   NAME
+      ReadMyConfig
+
+   DESCRIPTION
+      This function is very similar to ReadConfig, but is able to infer the
+      name of the config file from the full pathname of your application.
+      This is available as the argv[0] argument to C programs. Whatever
+      your program is called and wherever it is stored, using this
+      device will find the config file located in the same directory under
+      the same name.
+
+   SYNOPSIS
+      #include "pal.h"
+      void  ReadMyConfig(char *MyName);
+
+   INPUTS
+      MyName - the name of your application, including the '.EXE' extension.
+
+   NOTE
+      ReadMyConfig has no return value - if the file is not found,
+      that is not considered an error, since your program may
+      still use the default value system supported by the
+      GetConfigXXX functions. If you need a mandatory entry in
+      the config file, you can detect its absence - see
+      GetConfigString for a tip how this can be done.
+
+   SAMPLE
+      int main(int argc, char *argv[])
+      {
+         /* read config file, whatever program is called and
+            wherever it is stored. */
+         ReadMyConfig(argv[0]);
+         /* ... */
+      }
+
+!Seealso: GetConfigString ReadConfig DiscardConfig
+
+!short: GetConfigString      Retrieve a string from config data
+   NAME
+      GetConfigString
+
+   DESCRIPTION
+      GetConfigString will retrieve a string value from the config file,
+      given a section name and a key. If the section and/or the key does
+      not exist, it will return a default value that you provide.
+
+   SYNOPSIS
+      #include "pal.h"
+      char *GetConfigString(char *Section, char *Key, char *Default);
+
+   INPUTS
+      Section - The name of the section (in angular brackets in the CFG)
+                where you want your value retrieved from.
+      Key     - The key, i.e. the left hand side of the assignment in the
+                CFG file.
+      Default - what should be returned if the section/key pair cannot be
+                found.
+
+   RETURN VALUE
+      A pointer to the value, or the default. Note that you should not
+      write to this pointer since its storage belongs to the config
+      routines. Copy the string to a local buffer if you need to modify
+      it.
+
+   NOTE
+      You can also pass NULL as default string. This is useful to detect
+      the absence of a certain section/key pair in the config file. (Or
+      the absence of the config file altogether) If you pass NULL as
+      default value and get NULL as return value, you can be certain that
+      the section/key was not present - GetConfigString will never return
+      NULL otherwise.
+
+   SAMPLE
+      char *SerialCode;
+
+      SerialCode = GetConfigString("User", "Serial", NULL);
+      if(SerialCode == NULL) {
+         FatalExit("No 'Serial =' in [User] section of CFG file);
+      }
+
+!Seealso: GetConfigInt
+
+!short: GetConfigInt         Retrieve an int from config data
+   NAME
+      GetConfigInt
+
+   DESCRIPTION
+      GetConfigInt will retrieve a integer value from the config file,
+      given a section name and a key. If the section and/or the key does
+      not exist or is not valid, it will return a default value that you
+      provide.
+
+   SYNOPSIS
+      #include "pal.h"
+      int GetConfigInt(char *Section, char *Key, int Default);
+
+   INPUTS
+      Section - The name of the section (in angular brackets in the CFG)
+                where you want your value retrieved from.
+      Key     - The key, i.e. the left hand side of the assignment in the
+                CFG file.
+      Default - what should be returned if the section/key pair cannot be
+                found. Note that 'Default' is an int here. There is no error
+                condition, the default is returned if the entry does not
+                exist or is not valid.
+
+   RETURN VALUE
+      The integer value, or the default. (If the section/key pair does
+      not exist or if the value is syntactically wrong)
+
+   NOTE
+      GetConfigInt can also handle hexadecimal and octal values. It assumes
+      hex when a value starts with 0x or 0X. Octal is assumed for values
+      starting with a zero.
+
+   SAMPLE
+      int ComBase;
+
+      /* Get COM base address */
+      ComBase = GetConfigInt("SerialPort", "Address", 0x3f8);
+
+!Seealso: GetConfigString
+
+!short: GetFirstEntry        Used to scan sections: init scan
+   NAME
+      GetFirstEntry
+
+   DESCRIPTION
+      Used to scan all entries of a given section - initiates scan. Returns
+      a pointer to the first value string if the section exists, or NULL if
+      it does not. Can also return a pointer to the key.
+
+   SYNOPSIS
+      #include "pal.h"
+      char *GetFirstEntry(char *Section, char **pKey);
+
+   INPUTS
+      Section - The name of the section you want to scan.
+      pKey    - a pointer to a string pointer - if not NULL, will be
+                set to point to the first key string if found.
+
+   RETURN VALUE
+      Will return a pointer to the first value in the section, or NULL if
+      the specified section/key pair does not exist.
+
+   NOTE
+      GetFirstEntry and GetNextEntry use internal static variables to
+      store state information. You can only have one active
+      GetFirst/NextEntry loop at a time. (That is, in such a loop, you
+      can't call a function that itself uses these routines)
+
+   SAMPLE
+      See the GetNextEntry description for a complete example.
+
+!Seealso: GetNextEntry GetCfgLine
+
+!short: GetNextEntry         Used to scan sections: continue scan
+   NAME
+      GetNextEntry
+
+   DESCRIPTION
+      Returns the next entry in a section scan. If char **pKey is not NULL,
+      the pointer *pKey will be set to point to the key string too.
+
+   SYNOPSIS
+      #include "pal.h"
+      char *GetNextEntry(char **pKey);
+
+   INPUTS
+      pKey    - a pointer to a string pointer - if not NULL, will be
+                set to point to the next key string if found.
+
+   RETURN VALUE
+      Will return a pointer to the next value in the section, or NULL if
+      there is no next value. (i.e. you have retrieved the last one)
+
+   NOTE
+      GetFirstEntry and GetNextEntry use internal static variables to
+      store state information. You can only have one active
+      GetFirst/NextEntry loop at a time. (That is, in such a loop, you
+      can't call a function that itself uses these routines)
+
+   SAMPLE
+      This program will scan and print all key/name pairs of the 'Printer'
+      section in 'SETUP.CFG'. It also illustrates a typical GetFirst/Next
+      loop.
+
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      #include "pal.h"
+
+      void main(void)
+      {
+         char *Key;
+         char *Value;
+
+         ReadConfig("SETUP.CFG");
+
+         if(Value = GetFirstEntry("Printer", &Key)) do {
+            printf("The key %s has the value '%s'", Key, Value);
+         } while(Value = GetNextEntry(&Key);
+         else printf("Section 'Printer' not found or empty\n");
+
+         DiscardConfig();
+      }
+
+!Seealso: GetFirstEntry GetCfgLine
+
+!short: GetCfgLine           Retrieve line number info during scan
+   NAME
+      GetCfgLine
+
+   DESCRIPTION
+      Returns, for the last entry retrieved via GetFirstEntry/GetNextEntry,
+      the line number of the config file this entry was defined on - useful
+      if you need to output line number information in an error message.
+
+   SYNOPSIS
+      #include "pal.h"
+      int GetCfgLine(void);
+
+   SAMPLE
+      printf("The last line was %d\n", GetCfgLine());
+
+!Seealso: GetNextEntry GetCfgLine
+
+!short: DiscardConfig        Frees memory used by CFG database
+   NAME
+      DiscardConfig
+
+   DESCRIPTION
+      Call this function when you don't need access to the config data
+      any more. You must again load a config file before you may
+      retrieve data again.
+
+   SYNOPSIS
+      #include "pal.h"
+      void DiscardConfig(void);
+
+   SAMPLE
+      See the GetNextEntry description for a sample call to DiscardConfig.
+
+!Seealso: ReadConfig ReadMyConfig GetNextEntry
+

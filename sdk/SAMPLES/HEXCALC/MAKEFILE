@@ -1,0 +1,60 @@
+#********************************************************************#
+#                                                                    #
+#---------------- COUGAR APPLICATION MAKE FILE ----------------------#
+#                                                                    #
+#********************************************************************#
+
+#********************************************************************
+#
+# This file is designed to be tailored for each exe file produced.
+# The equates below, APP_LIBS and EXEFILE specify the application
+# specific libraries and exe filename.  Change them to reflect your
+# application's build.
+#
+# APP_LIBS:  A list of the application libraries.  In general, there
+#            may be more than one library for each application.
+#            The library containing the main executeable MUST be the
+#            first library on the line.
+#
+# EXEFILE:   The file that the make process will produce.  It is
+#            currently assumed that there is an obj file with the
+#            same name in creating the application library.
+#
+# These equates must be defined before including the "general.mak"
+# file.  These definintions are required for "general.mak" to
+# build the executeable--it relys on these equates being defined.
+#
+# If the macro DEVELOPER is defined (eg. DEVELOPER=1), then the macros
+# INC_PATH and LIB_PATH are used to find include and library/object
+# files.  INC_PATH and LIB_PATH default to "..\headers" and "..\tools"
+# if they are not set before the cougar.mak file is included.
+#********************************************************************
+
+APP_LIBS=main.lib
+APP_LIBS=main.lib
+EXEFILE=hexcalc.exe
+DEVELOPER=1
+
+
+!include "cougar.mak"
+
+
+
+#********************************************************************
+#
+# Library specifications - main.lib must contain at least main().
+#
+#********************************************************************
+# Note: The "magic macro" $(**: =+) in the link line works like this:
+#   $** returns all the dependent filenames.
+#   $(<macroname>:<findstring>=<replacestring>) returns <macroname>
+#       with all occurrences of <findstring> changed to <replacestring>.
+#   $(**: =+)  returns all dependents connected by pluses instead of spaces
+#********************************************************************
+
+main.lib: hexcalc.obj dosfile.obj anldiv.obj anlmul.obj anlrem.obj
+        del $@
+        lib @<<
+$* /NOI +$(**: =&^
++);
+<<NOKEEP

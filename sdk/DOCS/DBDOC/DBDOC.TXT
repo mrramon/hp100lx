@@ -1,0 +1,538 @@
+Here is a first document on the 100LX database file format.
+
+o
+ \/__________________________________________________________________________
+ /\
+o
+
+Format of the 100LX database files
+----------------------------------
+
+The structure of all database files in the HP100LX is essentially the same.
+The applications that use the database engine are the Phone Book, 
+General Database, Note Taker, World Time, Appointment Book.  (The
+Appointment book has additional structure that will be detailed in a 
+later document.)
+
+I'll explain the format of a general database first.  The database 
+engine is designed around a few primary principles.  Although you don't
+need to know them to understand the format, it may help in seeing why
+certain design decisions were made.
+
+The first is flexibility (i.e. complexity!).  All the information to 
+enter and view data for a database is contained within the file.  Except 
+for the appointment book, all the database apps are actually different 
+incarnations of the same program, differentiated by the initial file 
+that is created.
+
+The second principle is that the data modifications are made to the file 
+as they happen.  Only enough of the file to work with is in memory at 
+one time.  Thus, the file can grow much larger than available RAM 
+(unlike the 95LX which kept the entire file in memory).  It also 
+provides higher protection for the data from disasters (i.e. reboots, 
+lockups, battery dying, etc.).
+
+The third principle is that all actions are "undoable".  This means that
+the engine cannot throw away information that might be undone until that
+data is no longer accessible.
+
+
+
+The structures given are in Microsoft C for an IBM PC or compatible.
+All multiple byte numbers are given lowest byte to highest byte.
+  A char is -128 .. 127
+  An unsigned char is 0 .. 255
+  An int is -32,768 .. 32,767
+  An unsigned int is 0 .. 65,535
+  A longint is -2,147,483,648 .. 2,147,483,647
+The codepage used in 100LX databases is CP850.
+
+
+
+---------------------------------------------------------------------------
+                  STRUCTURES USED IN THIS DOCUMENT
+---------------------------------------------------------------------------
+
+************************** RECORDHEADER ************************
+A RECORDHEADER structure precedes every record in the database (including
+the DBHEADER, but not the signature).
+
+OFFSET  NAME           TYPE            Contents
+0       Record Type    char            Type of record.
+        The types of records are:
+        Number   Name              Content
+          0    TYPE_DBHEADER       Header for database.  First record in db.
+          4    TYPE_CARDDEF        Information on the card layout.
+          5    TYPE_CATEGORY       List of categories for the database.
+          6    TYPE_FIELDDEF       Definition record for each field
+          7    TYPE_VIEWPTDEF      Viewpoint (sort and subset) definition
+          9    TYPE_NOTE           Note record
+          10   TYPE_VIEWPTTABLE    Table of viewpoint entries
+          11   TYPE_DATA           Data record
+          12   TYPE_LINKDEF        Smart clip record
+          13   TYPE_CARDPAGEDEF    Info struct for multiple card database
+        14..30 TYPE_USER           Defined by the application
+          31   TYPE_LOOKUPTABLE    Pointers to all other records in the db.
+
+
+1       Record Status  char            Record status (0x01=Garbage,
+                                                      0x02=Modified)
+2..3    Length         unsigned int    Length of record *including* header (i.e.
+                                       a zero byte record would have 6 as the
+                                       length).
+4..5    Record Number  int             Sequential record index.  Each
+                                       record type uses its own index
+                                       starting at 0.
+
+
+
+
+************************** DBTIMESTAMP *************************
+The timestamp structure is used in the database header for reconciliation.
+The date portion (bytes 0..2) and the time portion (bytes 3..4) are
+used separately in subset strings.
+
+0      Year            char    0..199  = 1900..2099
+1      Month           char    0..11   = Jan..Dec
+2      Day             char    0..30   = 1st..31st
+3..4   Minute          int     0..1439 = 12:00am..11:59pm
+
+
+
+
+************************* PACKEDWINDOW ************************
+
+0..3   UNUSED          longint   Window class handler.  Reconstructed
+                                 upon loading from fielddef information.
+4..5   x               int       X position in pixels (0..639)
+6..7   y               int       Y position in pixels (0..199)
+8..9   w               int       width in pixels
+10..11 h               int       height in pixels
+12..13 LogicalSize     int       Size of buffer for edit-type fields (as
+                                  opposed to screen size).  Includes null
+                                  terminator.
+                                 For radio fields, an index of the radio type.
+                                 For check boxes, a bit mask for that check on.
+14..17 Style           longint   LHAPI window style.  Most styles are not used.
+                                 Styles per LHAPI are as follows:
+
+  STYLE_NOSHADOW          0x00004000L
+  STYLE_COMBOEDIT         0x00008000L
+  STYLE_DATETIME          0x00010000L
+  STYLE_CHECKBOX          0x00020000L      Should be set for a check box
+  STYLE_NO_PARENT_KEY     0x00040000L
+  STYLE_PUSHB_WIDTH       0x00080000L
+  STYLE_PUSHBUTTON        0x00100000L
+  STYLE_COMBOLIST         0x00200000L
+  STYLE_RADIO             0x00400000L      Should be set for a radio button
+  STYLE_GRAY              0x00800000L
+  STYLE_XYRELATIVE        0x01000000L
+  STYLE_WHCHAR            0x02000000L
+  STYLE_NOBORDER          0x04000000L
+  STYLE_LEAF              0x08000000L
+  STYLE_NOTIFY            0x10000000L
+  STYLE_NOFOCUS           0x20000000L
+  STYLE_SAVEUNDER         0x40000000L
+  STYLE_INVISIBLE         0x80000000L
+
+18..19 Parent          int       Index of the parent window (all windows
+                                 within a group box give the index of the
+                                 group as their parent).  -1 if no parent
+                                 (top level window).
+
+
+************************** COLUMN INFO *************************
+Used for column arrangment in viewpoint definition
+
+0      Field Number    char    Index of fielddef to use for this column
+1      Width           char    Width of column in characters.
+
+
+
+
+************************* PACKED LOOKUP *************************
+Every record in the database has an entry in the lookup table.
+The format of these entries:
+
+0..1   Size            int     Size of record (including record header)
+2..3   Filters         int     if bit 0x0001..0x8000 is set, indicates 
+                               that a switch to viewpoint 0..15 requires
+                               this record to be sorted/filtered afresh.
+                               The "dirty bit" for keeping track of
+                               what records have been changed since last
+                               visiting a viewpoint.
+4      Flags           char    128 = Deleted
+5..7   Offset          char[3] 3 bytes of offset (0..16 Meg) Lowest..Highest
+                               Gives disk seek address of record.
+
+
+
+
+
+
+
+
+---------------------------------------------------------------------------
+                DATABASE RECORDS (IN APPROXIMATE ORDER)
+---------------------------------------------------------------------------
+
+
+************************** SIGNATURE ***************************
+The first 4 bytes in the file are the Database Signature.
+
+OFFSET  NAME           TYPE            Contents
+0..3    FileID         char            0x68  0x63  0x44  0x00
+
+
+Following this are the database records.  Only the first record (the 
+database header) is in a fixed location.  All other records may occur in 
+any order in the file.  
+
+
+
+**************************** DB HEADER *************************
+Only one of these records is in a database.  It immediately
+follows the signature.
+
+0..5   Record Header  RECORDHEADER      Although the format of a RECORDHEADER
+                                        is above, specifically for this
+                                        record it is:
+                                        0x00 0x00 0x19 0x00 0x00 0x00
+
+6..7   Release Ver    int               Database release ver (0x0102)
+
+8      FileType       char              'D' = General database and phone book
+                                        'W' = World Time
+                                        'N' = Notetaker
+                                        '2' = Appointment book
+
+9      File Status    char              Bits : 0x01=Database already open
+                                               0x02=A record modified since
+                                                    last reconcile
+
+10..11 CurrentViewpt  int               Record num of current viewpoint
+
+12..13 NumRecords     int               Count of all records in database
+
+14..17 LookupSeek     longint           File offset of lookup table.  If 0,
+                                        it means that the lookup table is
+                                        missing (i.e., the user has rebooted
+                                        before the file was closed), and it
+                                        must be reconstructed by walking
+                                        through the database and reading record
+                                        headers.
+
+18..22 LastReconcile  DBTIMESTAMP       When database was last reconciled
+                                        (or creation date if never reconciled).
+
+23..24 ViewptHash     int               "Magic" hash generated from the
+                                        following system settings:
+                                           Country, CodePage, Sort,
+                                           Keyboard, Language, KEYBEZ active.
+                                        Normally (on a US 100LX with no changes
+                                        to these settings) this is 0x8437.
+                                        Used to keep viewpt tables from 
+                                        going out of date if system sort 
+                                        order changes. If on DB_Open 
+                                        this number mismatches, all 
+                                        viewpoint tables are flagged as 
+                                        invalid and are recreated as needed.
+
+
+
+************************** CARDDEF  ***************************
+Contains the positioning information for the windows in the database card.
+All records (even on multiple pages) share the same carddef; the card page
+def record details the spliting of fields into multiple pages.
+There is only one record of this type.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x04 0x?? 0x?? 0x?? 0x00 0x00
+
+6...   Windows 1..n   PACKEDWINDOW      Array of PACKED windows for each
+                                        field in the database.  The
+                                        relationship is one-to-one with
+                                        the FIELDDEF records.  The number
+                                        of PACKEDWINDOWS is computed by
+                                        the number of FIELDDEF records.
+
+
+
+************************** FIELDDEF ***************************
+Defines each field in the database.  There is one FIELDDEF record for 
+every field (even non-data fields).  The FIELDDEF records refer to the 
+position of information in DATA records in the file.  The database 
+engine uses the information in the FIELDDEFS to provide sort, 
+subsetting, and string retrieval functions.  Although in the general
+databases, all information in the data records is pointed to by
+FIELDDEFs, DATA records can contain additional information.  This allows
+you to keep binary or non-user accessible info in the records (the appointment
+book does this with record links).
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x06 0x?? 0x?? 0x?? 0x00 0x??
+
+6      FieldType      char              Type of field:
+
+       Num Name                  Description
+
+        0  BYTEBOOL_FIELD        Checkbox: points to a bit in a byte
+        1  WORDBOOL_FIELD                  points to a bit in a word
+        2  STRING_FIELD          Points to ASCIIZ string
+        3  PHONE_FIELD           Treated as a String by the database
+
+        4  NUMBER_FIELD          Numbers are stored as ASCIIZ strings,
+                                   but compare as numbers
+        5  CURRENCY_FIELD        Treated as a number by the database
+
+        6  CATEGORY_FIELD        Stored as an ASCIIZ string with ';'
+                                   separating each selection
+
+        7  TIME_FIELD            int: Minutes since midnight
+        8  DATE_FIELD            points to char array[3];
+                                    array[0] is Year: 0 starts at 1900
+                                    array[1] is Month from 0..11
+                                    array[2] is Day from 0..30
+
+        9  RADIO_FIELD           dataoffset points to actual offset of
+                                 radio button byte
+
+        10 NOTE_FIELD            The field is a note (which resides in a
+                                 separate record); dataoffset points to the
+                                 record number of the note.  If no note is
+                                 attached, the record number pointed to should
+                                 be -1.
+
+        11 GROUP_FIELD           Used for Groupboxes; no data is attached
+        12 STATIC_FIELD          Used for Static Text; no data is attached
+        13 MULTILINE_FIELD       Same as a string, but the field can have CR/LFs
+        14 LIST_FIELD            Doubles as a STATIC_FIELD
+        15 COMBO_FIELD           Doubles as a STRING_FIELD
+        16 USER_FIELD            The applications can define their own
+                                 field types starting at USER_FIELD NOTE:
+                                 The FIELDDEF for user defined fields
+                                 MUST have the status bit set to
+                                 FIELDDEF_CALLBACK and a FieldCallback
+                                 function provided.
+
+7      FieldID        char       Used to identify unique fields by 
+                                 applications--not used.
+
+8..9   DataOffset     int        Offset of data into data record.  If info
+                                 is at fixed position in record, do not set
+                                 FIELDDEF_RELATIVE.  If in a variable position,
+                                 set FIELDEF_RELATIVE.  Then DataOffset points
+                                 at a fixed place in the record where the true
+                                 offset of the data (a int) can be found.
+
+10     Flags          char       Combination of the following bits:
+       FIELDDEF_NODATA    0x80   The fielddef does not have any associated data
+       FIELDDEF_RESERVED  0x40   The fielddef record is reserved (don't use)
+       FIELDDEF_RELATIVE  0x20   The dataoffset does not point to the actual
+                                 data, but points to a word.  This word is the
+                                 offset to the data.
+       FIELDDEF_NULLTITLE 0x10   The window related to the fielddef has no
+                                 title.
+
+11..12 Reserved       int        Only used by some fields.
+       BYTEBOOL_FIELD,WORDBOOL_FIELD : bitmask of bit to check
+       RADIO_FIELD : value to stuff into data byte
+       CATEGORY_FIELD : record number of associated CATEGORY_TYPE rec
+
+13..33 Name           char       Space for 20 chars with trailing 0.
+
+
+ 
+************************ CARDPAGEDEF **************************
+This record is only present if there is more than one card per
+record in the database.  You cannot have this record if there is only
+one card in the database.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x0d 0x?? 0x28 0x00 0x00 0x00
+
+6..25  Reserved       PWINDOW
+26..27 CurrPage       int               Used by Card to track current page
+28..29 PageCount      int               2..4 for number of pages
+30..33 PageStart      char [4]          Index of control starting each page
+34..37 PageSize       char [4]          Number of controls on each page
+
+
+
+************************** CATEGORY ***************************
+Holds all the categories for the database.  A null terminated
+string, with semicolons separating each category.  Maximum size
+of the string is 256 bytes.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x05 0x?? 0x?? 0x?? 0x00 0x00
+
+6...   CategoryString chars             e.g. "Fred;Jolly"
+ 
+
+
+
+*************************** DATA ****************************
+A data record.  The data in the record is accessed by the fielddefs. The 
+layout below is not required, but is what is output by the built-in 
+applications (except the appointment book).  The first few bytes are the 
+fixed fields.  They are in the same place in every record.  They are 
+radio buttons, checkboxes, times, and dates.  Also in this group are 
+relative fields--all the string fields generated by the native 100LX 
+apps are relative.  The relative fields give the real offset of the 
+string in the record so that unused space can be packed out.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x0b 0x?? 0x?? 0x?? 0x?? 0x??
+
+6..n   Fixed fields       int           Either fixed fields or pointers to
+                                        variable fields.  Number of entries
+                                        is determined by the fielddefs.
+
+n+1    Null placeholder   char          A 0 byte.  All null strings in the
+                                        record are compressed to point to
+                                        this single byte, instead of putting
+                                        in multiple nulls.
+
+n+2..m Relative fields    char          Null terminated strings.  The number
+                                        is determined by the fielddefs.
+
+
+
+*************************** NOTE ****************************
+Record attached to a data record.  Each note field has its own record.
+In the 100LX, only data records with notes have note records;
+the Omnibook 300 has note records for every data record (even
+if the note is empty).
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x09 0x?? 0x?? 0x?? 0x?? 0x??
+
+6..n   Note           chars             From 0..32767 characters.  The note
+                                        cannot have characters 0x00 or 0xff.
+
+
+********************* SMART CLIP DEFINITION *******************
+Smart-clip (also called link-def) definitions are used for 
+smart-clipping and printing. At least one must be present to print.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x0c 0x?? 0x?? 0x?? 0x?? 0x??
+
+6..7   String Length  int               Length of Link string (following name)
+8..9   Flags          int               Flags:
+                      0x02 = Linkdef can't be deleted by user
+
+10..41 Name           char [32]         Name
+42..n  Link String    char              Info representing the smart-clip.
+
+
+
+******************** VIEW POINT DEFINITION ********************
+Every viewpoint (that is, sort/filter/column arrangement combination)
+has a viewpoint definition.  It describes the columns and their widths,
+the sort fields, and the SSL string for filter matching.  Only
+16 viewpoints can be created.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x07 0x?? 0x?? 0x?? 0x?? 0x00
+
+6..7   Token Length   int               Length of SSL Token representation
+8..9   String Length  int               Length of SSL String representation
+10..11 Flags          int               Flags for the viewpoint:
+       1   Viewpoint Unnamed       Viewpoint is the "Unnamed viewpoint"
+       2   Viewpoint NoDelete      Viewpoint cannot be deleted by user
+       4   Viewpoint General       Viewpoint was entered as SSL string, not Card
+
+12     Reserved       char
+13..44 Name           char [32]         Name of viewpoint
+45..50 Sort Field     int [3]           Index of fielddef to sort; -1 means no
+                                        more fields.
+51..56 Ascending      int [3]           1=ascending,0=descending for above
+                                        corresponding Sort Fields
+57..96 ColumnArrange  COLUMN INFO [20]  Array of column information; -1 is last
+                                        column
+97..n  SSL Tokens     char              SSL Tokens in RPN-style --length is
+                                        given by Token Length.
+
+n+1..m SSL String     char              String form of SSL statement
+
+
+
+Although a complete description will not be given on how to create SSL token
+strings, here is a list of the recognized tokens:
+
+    0x00    ERROR_TOKEN     (used only in parsing--not in SSL token strings)
+    0x0c    LPAREN_TOKEN    (used only in parsing--not in SSL token strings)
+    0x0d    RPAREN_TOKEN    (used only in parsing--not in SSL token strings)
+
+    0x01    NOT_TOKEN          ( ! )
+    0x02    OR_TOKEN           ( | )
+    0x03    AND_TOKEN          ( & )
+    0x04    EQ_TOKEN           ( = )
+    0x05    LE_TOKEN           ( <= )
+    0x06    LT_TOKEN           ( < )
+    0x07    GE_TOKEN           ( >= )
+    0x08    GT_TOKEN           ( > )
+    0x09    NE_TOKEN           ( <> )
+    0x0a    IN_TOKEN           ( -> )
+    0x0b    CONTAINS_TOKEN     ( # )
+    0x0e    SEPARATOR_TOKEN    ( , )
+    0x0f    TO_TOKEN           ( .. )
+    0x10    NUMBER_TOKEN       Followed by number in ASCIIZ
+    0x11    STRING_TOKEN       Followed by string in ASCIIZ
+    0x12    NAME_TOKEN         Followed by Name index (int)
+    0x13    BOOLNAME_TOKEN     Followed by BoolName index (int)
+    0x14    TIME_TOKEN         Followed by time (int)
+    0x15    DATE_TOKEN         Followed by date (3 chars)
+    0x16    CATEGORY_TOKEN     Followed by Category in ASCIIZ
+    0x17    USERTYPE_TOKEN     Followed by user type (char), size (int), and
+                                actual usertype data.
+    0x1a    STAR_TOKEN         ( * )
+    0x19    PLACEHOLDER_TOKEN
+    0x18    EOL_TOKEN          END OF TOKEN STRING
+
+
+
+
+************************  VIEW POINT TABLE **********************
+For every viewpoint definition, there is a corresponding viewpoint
+table.  This correspondence is one-to-one; the 0th VIEWPTDEF
+references the 0th VIEWPTTABLE.  The viewpoint table contains all
+the records in sorted order that meet that viewpoint's SSL filter.
+The viewpoint table allows multiple viewpoints to be managed much
+quicker than reconstructing the viewpoint from scratch each time
+it is accessed.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x0a 0x?? 0x?? 0x?? 0x?? 0x00
+
+6..n   Data Record Index   int array    A data record index for all records
+                                        in the viewpoint.  If the table is
+                                        a single entry of -1, it has been
+                                        invalidated--the next switch to the
+                                        viewpoint will recreate it from
+                                        scratch.
+
+
+
+************************ LOOKUP TABLE ***************************
+This table gives the disk address and type of every record in the 
+database.  If it is absent (and the LookupSeek in the header is 0), then 
+the database engine will recreate on opening by stepping through the 
+file.  It is therefore not crucial that it is present.
+
+0..5   Record Header  RECORDHEADER      See RECORDHEADER structure above.
+                                        0x1f 0x?? 0x?? 0x?? 0x00 0x00
+
+6..n   Lookup Entries PACKEDLOOKUP      Lookup entries for disk records
+
+This record is always the last record in the database (if present).
+If it is there, it is followed by a small table called the TypeFirst
+table that has no record header.  This table gives the beginning
+lookup entries for each group of record types.  The correct lookup entry
+to use for Record Type X, Record Number Y is given by looking at
+Lookup Entry [TypeFirst[X] + Y].
+
+0..63  TypeFirst Table  int [32]        First lookup entry for record types
+                                        0..31.

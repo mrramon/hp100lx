@@ -1,0 +1,22 @@
+This program was designed for HP 100 users running DOS applications
+that tend to leave files open on a card in drive A.  A problem
+occurs after the machine is turned off and back on--an error is generated
+when they try to access their open files on drive A.
+
+What the TSR does, is attach itself to the device driver (CARDDRV)
+so that it can override the result of calls to the device driver
+that ask if the media has changed.  This call expects one of three
+answers: yes, no, or maybe.  The TSR changes an answer of "yes, the
+media has changed" to be "well, maybe the media has changed".  This
+allows the system to check further for information about a possible
+media change and eliminates the "Invalid Media Change" message.
+
+This program removes a certain degree of bullet-proofing that guarantees
+that true media-change events are detected.  Therefore, the user should
+attempt to guarantee that the media doesn't actually change while files
+are open or corruption of the memory card is a possiblity.
+
+To start it up, execute FIXEDA.COM from the C: prompt or from a batch
+file.  To remove it, invoke it again using the '/u' option.
+
+The memory resident size is 352 bytes.

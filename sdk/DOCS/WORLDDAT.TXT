@@ -1,0 +1,117 @@
+This is documentation on the WORLD.DAT format.
+
+WORLD.DAT is data for the ROM cities in the World Time list. It *isn't* 
+in the standard database format (it would take up about 50K or so if it 
+were).  The data is compressed into a Huffman encoded bit stream--that 
+is, each character is a variable number of bits, depending on the 
+frequence (the more often the letter, the fewer bits it takes).
+
+The format is not intended to be read by a user or typical programmer, 
+and is structured to be as small as possible.  To understand this,
+you should have knowledge of assembly programming and Huffman
+Trees; a good deal of knowledge of data structures is needed
+to work with this file.  HP does not support outside developer
+work with this file.  With these warnings...
+
+
+The first 16 bits are the count of the number of city records.
+If you're decoding this right, you should get 478.
+
+All the following bits are for the city records; the format of
+the city record is:
+
+First 9 bits: Either 1) all ones, which means this city provides country
+                        info
+                 or  2) some other number, which means that the city 
+                        does not have country info.  It is the index
+                        of the record that does have the country info
+                        (a record of the above type.)
+
+If the record does have country info (only one of these for each country),
+the next bits will be:
+    The Country Name (WT String--the format of a WT String is explained below).
+    The Country's International Access Number (WT BCD--explained below).
+
+In either case, the following bits will be:
+    The City Name   (WT String)
+    The City Prefix (WT BCD)
+    Hours Offset    (12 bits--in minutes; you should sign extend the 12th
+                     bit when expanding to a 16 bit int)
+    Unused          (1 bit--don't care. Used internally to pad lat to 12 bits)
+    Latitude        (11 bit int; should sign extend 11th bit when expanding)
+    Longitude       (12 bit int; should sign extend 12th bit when expanding)
+    DST ZOne        (WT Char)
+
+
+All the cities are sequential in the bit stream--that is, each city 
+starts on the bit that the last city left off.
+
+The format of WT Char:
+  Each character takes a variable number of bits.  The way to read these 
+  is to take a 0 or 1 bit from the bit stream, and use it to walk down a 
+  tree that contains the characters.  Reading a 0, take a left branch; 
+  reading a 1, take a right branch.  When you get to a leaf, spit out a 
+  character.  The next character follows at the very next bit.  Given 
+  that, the tree that is used for the encoding is below; I've put the 0 
+  and 1 on some of the initial branches to help you see how they go...
+
+                                  Start Here
+                                      v
+                      /-------0-------*-------1--------\
+                     /                                  \
+            /---0---*---1--\                     /---0---*---1---\
+           /                \                   /                 \
+       /0-*-1--\        /--0-*-1-\         /-0-*-1--\         /--0-*-1-\
+      /         [A]     /         \        /         \     [null]       \
+    0*1-\           /-0*1      /-0*1     0*1-\     /-0*1-\           /-0*1
+   /    [I]        /     \   [N]   \    /    [O] [E]      \        [R]    \
+   *----\      /--*--\   *         *    *               /-0*1-\            *
+  /      *    [S]    [L]/ \       / \  / \             /      [D]         / \
+ [!]    / \            /   \     /   \[M] [U]      /-0*1-\              [B] [C]
+        *  [K]        *     *  [spc]  \           /      [,]
+       / \           / \   / \       [T]      /-0*1-\
+      /   [Y]       / [P] [G][H]            [W]     [F]
+    /-*--\         *
+   *      *       / \
+  / \    / \     [V] *
+  * [Q] [,] [X]     / \
+  /\              [J] [Z]
+ *  [-]
+ /\
+ * [']
+ /\
+[(]\
+    [)]
+
+[!] is an escape character--it means the next 8 bits gives the real ASCII
+    Code Page 850 character.
+[null] is 0, and is used to terminate the string (C style).
+[spc] is a space (ASCII 32).
+
+WT String--A sequence of WT Chars, terminated with a null character 
+  (i.e., the Huffman bits for a null, of course).  Case is not present 
+  in the string, but derived during uncompressing.  The first character 
+  is assumed to be upper case, as well as any characters following a 
+  character from 0..64.  All other chars are lowercase (during compression,
+  if the case mismatches what the algorithm would produce, the char is
+  output with an Escape followed by the real 8 bits of character).
+
+WT BCD--A pseudo BCD (4 bits per number) with the following extra codes:
+  0='0'
+  ...
+  9='9'
+  10='#'
+  11='*'
+  12='/'
+  13=' '
+  14=','
+  15=null (end of BCD number)
+
+
+The format of the TimeZone info is contained in
+D:\_SYS\TIMEZONE.DAT, and is in an ASCII format. It can
+be copied into C:\_DAT, and edited to add other 
+TimeZones.  One caveat--World Time assumes the file is in the proper 
+format when reading this file.
+
+

@@ -1,0 +1,107 @@
+! This is an example key remapping file that goes with KEY200.
+! (If you run KEY200 without any arguments, some terse help is printed.)
+!
+! There are various example key definitions in here; use them as a guide
+! to how you can customize your 200 to work the way you want to.
+!
+
+! ---------
+! EXAMPLE 1 : Swap the Memo and Notetaker keys, so Notetaker is a primary key
+! ---------
+
+Ctrl Memo : ^Ctrl Ctrl ^Ctrl Memo ^Memo
+Memo      : Ctrl Memo ^Memo ^Ctrl
+
+! Here the Memo key will bring up Notetaker, and vice versa.  Notice that
+! 1) The Ctrl Memo definition is before the Memo definition (by putting
+!    the more specific Memo definition first, it ensures both will work
+!    correctly.
+! 2) Both key presses (Ctrl Memo) and key releases (^Memo ^Ctrl) are
+!    included--KEY200 requires key presses AND key releases.
+! 3) Although the Memo key remapping is easy, the Ctrl Memo key
+!    requires a little explanation.  The first ^Ctrl releases the Ctrl
+!    key (since it is already being held down at the time Ctrl Memo is
+!    recognized).  The next Ctrl ^Ctrl section is really only needed for
+!    KEYBEZ--if KEYBEZ is loaded, a solo Ctrl press and release switches
+!    bilingual keyboards.  The Ctrl ^Ctrl switches the keyboard back
+!    to what it was before the Ctrl+Memo was started.  Then, the Memo
+!    key is pressed and released.
+
+! ---------
+! EXAMPLE 2 : Using the MENU key to open up room for keyboard macros
+! ---------
+
+Menu e : e ^e x ^x a ^a m ^m p ^p l ^l e ^e    ! Types "example"
+Menu r : Ctrl Alt Del                          ! Menu R for rebooting
+Menu t : Ctrl Phone ^Phone ^Ctrl F9 ^F9 A Shift ; ^Shift \ T U N E S  F10
+                                               ! Menu T = Load tunes database
+
+Menu ^Menu : Alt ^Alt    ! Now, only a solo Menu press brings up menu
+Menu :      ! Nothing as a definition allows us to null out Menu Press
+^Menu :     ! Don't let menu release do anything by itself, either
+
+! These four lines reconfigure the Menu key to provide potentially
+! many macros on the Menu key.  The first three are just some examples
+! of keys you might define.
+!    Useful things to note here are that the Menu E example types
+! "example" the safe way, by including all keypresses and releases. This
+! is exactly how it would look to a program if you typed it in yourself, and
+! will always work.  The Menu T example loads up a preset database into the
+! database application.  This "cheats", since the key releases aren't included.
+! For almost all programs, this should work just fine for letters and numbers.
+! (Note that the ':' in the filename was typed by Shift+';', just like on
+!  a standard PC.)
+!
+! The last three lines redefine how the Menu key works.
+! The first reconfigures the menu key to be an Alt key. This does two things:
+!   1) it makes the menu react on *releasing* the menu key.
+!   2) it allows the menu key to toggle the menu on/off (like Alt does).
+! The following two macros cause the Menu press (which would normally
+! bring up the menu), and the menu release to do nothing.
+
+
+! ---------
+! EXAMPLE 3 : Double key press
+! ---------
+
+^More More : More ^More Menu ^Menu A ^A T ^T Enter ^Enter   ! Leave the SysMgr
+^Filer Filer : 2 ^2 0 ^0 0 ^0 Enter ^Enter                  ! Restart SysMgr
+
+! This allows a double click (a More key press & release, followed by
+! another More key press with no intervening keystrokes) to terminate the
+! System Manager.
+! The corresponding action to get back into the System Manager is a "double
+! click" on the Filer key.
+!
+! Note that this technique really works best on the applications keys,
+! since two keypresses in a row is normally invalid for the application keys.
+
+! -----------
+! OTHER NOTES
+! -----------
+!   * To install KEY200, include a line like:
+!          KEY200 MYKEYS.TXT
+!     in your AUTOEXEC.BAT, before the 200 command.
+!
+!   * To uninstall KEY200, just type KEY200 after it has already been loaded.
+!
+!   * The key sequences on the right side of definitions are unaffected by
+!     your other remappings.  That is, even if you've redefined Phone to do
+!     something else, Phone in a definition will still bring up the Phonebook.
+!
+!   * To speed up key processing, remove all comments from your definition
+!     file.
+!
+!   * The following key sequences are not reproducible with KEY200:
+!      ON +, ON -, ON *, ON /, ON =, MENU Arrows, FN Zoom
+!
+!   * Although a definition is provided for the ZOOM key, it will only work
+!     within the applications, not from within DOS.
+!
+!   * When reproducing keys that are shifted, use the PC equivalent
+!     key sequence, not the 200LX key sequence.  For example, to create
+!     a '<', use:
+!        Shift , ^, ^Shift
+!     NOT
+!        Shift 1 ^1 ^Shift
+!

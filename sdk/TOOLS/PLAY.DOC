@@ -1,0 +1,133 @@
+    PLAY documentation
+
+
+Copyright (c) 1992 Lotus Development, Inc.
+All Rights Reserved.
+
+
+The module PLAY.COM may be used to create tunes for the Cougar platform.
+A system manager call will be made available at next release which
+mimics the capability found in PLAY.COM.
+
+
+Accepts an ASCII string terminated by either a carriage return or zero.
+
+Syntax: 
+PLAY ABCDEF...		  (ABCDEF can be any legal command string)
+or if no keyboard input:
+PLAY                     (Reads from a file MUSIC.DAT in currect directory)
+
+
+
+
+
+
+COMMAND
+
+A
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+B
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+
+C
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+
+D
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+
+E
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+
+F
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+
+G
+	Play musical note in current octave, length and tempo.
+	May be immediately followed by a '+" or '#' to indicate a sharp,
+	or a '-' to indicate a flat note.
+
+
+K
+	Enable user termination if keystroke entered.
+	Default is user termination enabled.
+	Range 0-1.  A value of 1 indicates user termination enabled.
+
+
+L
+	Length of note.
+	Range 1-64.  Default = 8 (whole note).
+	Where 64 = 1/8 note, 32 = 1/4 note etc.
+
+
+M
+	Music play style.
+	Default = N.
+	Range:
+	       N   - Normal
+	       L   - Legato
+	       S   - Staccato
+
+
+N
+	An alternate way to play a note from the 8 octave scale.
+	Range 0-84. Default = None
+	The number is divided by 12 to
+	determine the octave.  The remainder is the note to be played:
+
+	Remainder:      0       1       2       3       4       5
+	Note:           C       C#      D       D#      E       F
+
+	Remainder:      6       7       8       9       10      11
+	Note:		F#	G	G#	A	A#	B
+
+
+O
+	Octave.  Sets the current octave for all subsequent notes.
+	Default = 4.
+	Range 0-7.
+
+
+
+
+P
+	Pause. Pause between notes. Length of pause determined same as
+	length of note parameter.
+	Range 1-64.
+
+T
+	Tempo (pace of music).  A higher value indicates a faster pace.
+	Range 0-255. Default = 150.
+
+
+
+V
+	Set speaker volume.
+	Range 0-3. 3 is loudest.
+
+
+
+
+(space)
+	Used to separate music for readability.
+
+,
+
+	Used to separate music for readability.
+
+
+
+(period)
+
+       Extend a notes play time by half again (e.g. 1.5).
