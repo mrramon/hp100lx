@@ -162,7 +162,7 @@ Interrupt Vectors         | 00000h
 
 ## HP100LX/200LX Memory Map
 
-![HP 100LX/200LX Memory Map](image/__dg0201.gif)
+![HP 100LX/200LX Memory Map](image/__DG0201.GIF)
 
 NRCE, and NRAS [0] through NRAS[3] are separate chips. They are accessed by mapping portions of them into memory banks starting at C000 (the areas in gray). Each chip has its own ID; you need to provide the appropriate chip ID to the Hornet mapping registers. See INT 63H for more details.
 
